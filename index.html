@@ -1708,7 +1708,7 @@ async function exportDocx(){
   const filename = (S.general.code||'syllabus')+'_'+(S.general.nameTh||'course').replace(/[^\wก-๙\-]+/g,'_')+'.docx';
   const saveHandle = await pickSaveHandle(filename);
   if(saveHandle === 'CANCELLED') return;
-  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, VerticalAlign, HeadingLevel, AlignmentType, ImageRun } = docx;
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, VerticalAlign, HeadingLevel, AlignmentType, ImageRun, TableLayoutType } = docx;
   const CONTENT_W = 9638;
   const THIN = { style: BorderStyle.SINGLE, size: 2, color: 'A0A0A0' };
   const BORDERS = { top:THIN, bottom:THIN, left:THIN, right:THIN, insideHorizontal:THIN, insideVertical:THIN };
@@ -1751,7 +1751,7 @@ async function exportDocx(){
   }
   function row(cells, opts={}){ return new TableRow({ children:cells, cantSplit:true, tableHeader: !!opts.header }); }
   function headerRow(cells){ return row(cells, {header:true}); }
-  function table(rows){ return new Table({ width:{size:CONTENT_W,type:WidthType.DXA}, borders:BORDERS, rows }); }
+  function table(rows){ return new Table({ width:{size:CONTENT_W,type:WidthType.DXA}, layout:TableLayoutType.FIXED, borders:BORDERS, rows }); }
   function heading(text, opts={}){
     const m = withFmt(opts, opts.fmtKey);
     return new Paragraph({ keepNext:true, keepLines:true, spacing:{before:260, after:100}, border:{bottom:{style:BorderStyle.SINGLE,size:8,color:'B6902F',space:4}}, children:[ new TextRun({text, bold: m.bold!==undefined? m.bold:true, italics:!!m.italics, underline:m.underline? {}:undefined, size: m.size||24, color: m.color||'12332A', font: m.font||'Bai Jamjuree'}) ] });
@@ -1947,10 +1947,11 @@ async function exportDocx(){
       return row([cell(c.code,{width:apW[0]}), cell(src,{width:apW[1]}), cell(`คะแนนที่ map กับ ${c.code} ÷ คะแนนเต็มของ ${c.code} × 100`,{width:apW[2]})]);
     }) ]));
   children.push(new Paragraph({spacing:{before:160}, children:[]}));
-  children.push(table([ headerRow(['ระดับผลสัมฤทธิ์','ช่วงคะแนน'].map((t,i)=>cell(t,{header:true,width: i===0? CONTENT_W*0.6: CONTENT_W*0.4}))),
-    row([cell('บรรลุระดับสูง',{width:CONTENT_W*0.6}), cell('≥ 80%',{width:CONTENT_W*0.4})]),
-    row([cell('บรรลุระดับปานกลาง',{width:CONTENT_W*0.6}), cell('70–79%',{width:CONTENT_W*0.4})]),
-    row([cell('ควรพัฒนา',{width:CONTENT_W*0.6}), cell('< 70%',{width:CONTENT_W*0.4})]) ]));
+  const achW = [Math.round(CONTENT_W*0.6), CONTENT_W - Math.round(CONTENT_W*0.6)];
+  children.push(table([ headerRow(['ระดับผลสัมฤทธิ์','ช่วงคะแนน'].map((t,i)=>cell(t,{header:true,width: achW[i]}))),
+    row([cell('บรรลุระดับสูง',{width:achW[0]}), cell('≥ 80%',{width:achW[1]})]),
+    row([cell('บรรลุระดับปานกลาง',{width:achW[0]}), cell('70–79%',{width:achW[1]})]),
+    row([cell('ควรพัฒนา',{width:achW[0]}), cell('< 70%',{width:achW[1]})]) ]));
 
   const doc = new Document({
     sections: [{
