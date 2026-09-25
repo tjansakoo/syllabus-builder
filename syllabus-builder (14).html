@@ -1,0 +1,2411 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ระบบสร้างแผนการสอนรายวิชา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --ink:#16241c;
+  --ink-soft:#3d4f42;
+  --paper:#faf7ef;
+  --panel:#ffffff;
+  --line:#dcd6c4;
+  --pine:#1f4b3f;
+  --pine-deep:#12332a;
+  --pine-soft:#e7efe8;
+  --gold:#b6902f;
+  --gold-soft:#f3e9d2;
+  --danger:#a4402f;
+  --radius:10px;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing:border-box;
+}
+:root:not([data-theme="light"]){ }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ink:#eef1ec; --ink-soft:#b9c4bb; --paper:#131711; --panel:#1b2118;
+    --line:#333a2f; --pine:#5ca089; --pine-deep:#8fd0b8; --pine-soft:#1e2a22;
+    --gold:#d8b568; --gold-soft:#2a2416; --danger:#e0796a;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#eef1ec; --ink-soft:#b9c4bb; --paper:#131711; --panel:#1b2118;
+  --line:#333a2f; --pine:#5ca089; --pine-deep:#8fd0b8; --pine-soft:#1e2a22;
+  --gold:#d8b568; --gold-soft:#2a2416; --danger:#e0796a;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:'Bai Jamjuree',sans-serif; font-weight:400;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{ font-family:'Bai Jamjuree',sans-serif; margin:0; }
+button{ font-family:inherit; cursor:pointer; }
+input,textarea,select{ font-family:inherit; color:var(--ink); background:var(--panel); }
+
+/* ---------- top bar ---------- */
+.sticky-head{ position:fixed; top:0; left:0; right:0; z-index:40; }
+body{ padding-top:0; }
+.topbar{
+  background:var(--pine-deep); color:#f4efdd;
+  padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  border-bottom:3px solid var(--gold);
+}
+.topbar .brand{ display:flex; align-items:center; gap:10px; margin-right:auto; }
+.brand .mark{ width:30px;height:30px; border-radius:7px; background:var(--gold); display:flex; align-items:center; justify-content:center; font-size:16px; flex:none; }
+.brand .txt h1{ font-size:15px; line-height:1.1; color:#fff; font-weight:600; }
+.brand .txt span{ font-size:11px; color:#cfe0d5; }
+.topbar .tools{ display:flex; gap:8px; flex-wrap:wrap; }
+.tbtn{
+  border:1px solid rgba(255,255,255,.28); background:rgba(255,255,255,.06); color:#f4efdd;
+  padding:7px 12px; border-radius:8px; font-size:12.5px; display:flex; align-items:center; gap:6px;
+  transition:background .15s;
+}
+.tbtn:hover{ background:rgba(255,255,255,.16); }
+.tbtn.primary{ background:var(--gold); border-color:var(--gold); color:#2a2107; font-weight:600; }
+.ftype-icon{
+  display:inline-flex; align-items:center; justify-content:center; width:19px; height:19px;
+  border-radius:5px; color:#fff; font-size:10.5px; font-weight:800; line-height:1; flex:none;
+  box-shadow:0 1px 2px rgba(0,0,0,.25); letter-spacing:-0.3px;
+}
+.tbtn.primary:hover{ background:#c9a13c; }
+.tbtn.small{ padding:5px 9px; font-size:11.5px; }
+
+/* ---------- formatting toolbar ---------- */
+.fmtbar{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  background:var(--panel); border-bottom:1px solid var(--line);
+  padding:8px 14px;
+}
+.fbtn{
+  min-width:32px; height:32px; padding:0 8px; border-radius:7px; border:1px solid var(--line);
+  background:var(--panel); color:var(--ink); font-size:13px; display:inline-flex; align-items:center; justify-content:center; gap:4px;
+}
+.fbtn:hover{ background:var(--pine-soft); }
+.fbtn.active{ background:var(--pine); border-color:var(--pine); color:#fff; }
+.fbtn.fclear{ color:var(--danger); font-size:11.5px; padding:0 10px; }
+.fselect{
+  height:32px; border-radius:7px; border:1px solid var(--line); background:var(--panel); color:var(--ink);
+  font-size:12.5px; padding:0 6px; max-width:130px;
+}
+.fcolor{ width:32px; height:32px; padding:2px; border-radius:7px; border:1px solid var(--line); background:var(--panel); }
+.fsep{ width:1px; height:22px; background:var(--line); margin:0 2px; }
+.fhint{ font-size:11.5px; color:var(--ink-soft); margin-left:auto; white-space:nowrap; }
+@media (max-width:700px){ .fhint{ width:100%; margin-left:0; order:99; } }
+
+/* ---------- zoom control ---------- */
+.zoombar{
+  position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom,0px)); z-index:36;
+  display:flex; align-items:center; gap:4px; background:var(--panel); border:1px solid var(--line);
+  border-radius:24px; padding:5px 8px; box-shadow:0 4px 16px rgba(0,0,0,.14); font-size:12.5px; color:var(--ink-soft);
+}
+.zoombar button{
+  width:26px; height:26px; border-radius:50%; border:1px solid var(--line); background:var(--panel);
+  color:var(--ink); font-size:14px; display:flex; align-items:center; justify-content:center;
+}
+.zoombar button:hover{ background:var(--pine-soft); }
+#zLevel{ min-width:38px; text-align:center; font-weight:600; color:var(--ink); }
+
+/* ---------- document shell (single editable surface) ---------- */
+.doc-shell{ display:flex; justify-content:center; padding:22px 14px 90px; overflow-x:auto; }
+.doc-scroll{ width:100%; max-width:820px; }
+#paperZoomWrap{ position:relative; width:100%; }
+#paperZoomWrap .paper{ transform-origin:top center; transition:transform .12s ease; }
+.doc-tip{
+  max-width:820px; margin:0 auto 12px; font-size:12px; color:var(--ink-soft);
+  display:flex; align-items:center; gap:6px; padding:0 2px;
+}
+
+/* ---------- preview / editable document ---------- */
+.paper{
+  background:#fff; color:#17231b; box-shadow:0 1px 3px rgba(0,0,0,.08), 0 8px 26px rgba(0,0,0,.07);
+  border:1px solid #e4ddc9; border-radius:3px; padding:46px 42px 56px; font-size:13.5px; line-height:1.65;
+}
+/* editable text targets: look like plain document text until focused */
+.paper .ed{ outline:none; border-radius:3px; transition:background .12s; }
+.paper .ed:hover{ background:rgba(182,144,47,.08); }
+.paper .ed:focus{ background:#fdf6e3; box-shadow:0 0 0 2px var(--gold); }
+.paper .ed-block{ display:block; white-space:pre-wrap; }
+.paper td.ed{ display:table-cell; }
+.paper .doc-empty{ color:#b9b195; font-style:italic; }
+
+/* row / item / column controls */
+.paper .ctl{ width:44px; background:#faf7ee !important; text-align:center; padding:2px !important; }
+.paper .ctl .mini-ctl, .paper .ctl .mini-del{ width:17px; height:17px; padding:0; font-size:9px; margin:1px; display:inline-flex; }
+.paper .mini-del{
+  border:none; background:transparent; color:var(--danger); font-size:12px; cursor:pointer;
+  width:20px; height:20px; border-radius:5px; line-height:1;
+}
+.paper .mini-del:hover{ background:#fbeae6; }
+.paper th .mini-del{ color:#fff; }
+.paper th .mini-del:hover{ background:rgba(255,255,255,.25); }
+.paper li .mini-del{ margin-left:6px; vertical-align:middle; }
+.add-row-btn, .add-inline{
+  display:inline-flex; align-items:center; gap:5px; margin:2px 0 18px;
+  border:1px dashed var(--pine); color:var(--pine-deep); background:var(--pine-soft);
+  padding:6px 12px; border-radius:7px; font-size:12px; font-weight:600; cursor:pointer;
+}
+.add-row-btn:hover, .add-inline:hover{ background:#dcecdf; }
+.cur-chip-row{ display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 10px; }
+.cur-chip{
+  display:inline-flex; align-items:center; gap:6px; background:var(--pine-soft); color:var(--pine-deep);
+  border:1px solid #cfe0d5; border-radius:20px; padding:4px 6px 4px 10px; font-size:11.5px;
+}
+.cur-chip .mini-del{ color:var(--pine-deep); }
+:root[data-theme="dark"] .paper, @media (prefers-color-scheme: dark){ .paper{ } }
+.paper .logo-row{ display:flex; justify-content:center; align-items:center; gap:22px; margin-bottom:14px; flex-wrap:wrap; }
+.paper .logo-slot{ position:relative; display:inline-flex; align-items:center; justify-content:center; }
+.paper .logo-slot img{ height:64px; max-width:180px; object-fit:contain; }
+.paper .logo-slot .logo-del{
+  position:absolute; top:-8px; right:-8px; background:#fff; border:1px solid var(--line);
+  box-shadow:0 1px 3px rgba(0,0,0,.15);
+}
+.paper .logo-add{
+  border:1px dashed #c8c2a8; color:#8b8368; background:#faf7ee;
+  padding:10px 16px; border-radius:8px; font-size:12px; cursor:pointer;
+}
+.paper .logo-add:hover{ background:#f3edd9; color:var(--pine-deep); border-color:var(--pine); }
+
+.paper .sec-ctlrow{ display:flex; align-items:flex-end; justify-content:space-between; gap:10px; }
+.paper .sec-ctlrow h4.sec{ flex:1; margin-bottom:0; }
+.paper .sec-ctls{ display:flex; gap:4px; flex:none; padding-bottom:6px; }
+.paper .mini-ctl{
+  border:1px solid #e4ddc9; background:#faf7ee; color:#8b8368; font-size:11px; border-radius:6px;
+  padding:3px 7px; display:inline-flex; align-items:center; gap:3px; opacity:.55; transition:opacity .12s;
+}
+.paper .sec-ctlrow:hover .mini-ctl{ opacity:1; }
+.paper .mini-ctl:hover{ background:#f3edd9; color:#5c5638; }
+.paper .mini-ctl.mini-del{ color:var(--danger); }
+.paper .mini-ctl.mini-del:hover{ background:#fbeae6; }
+.paper .mini-ctl[disabled]{ opacity:.25; pointer-events:none; }
+.paper .custom-sec{ margin:22px 0 8px; padding:10px 12px; border:1px dashed #d8d2ba; border-radius:8px; background:#fdfcf6; }
+.paper .custom-sec .sec-ctlrow h4.sec{ border-bottom:none; margin:0; padding-bottom:0; }
+.paper .secnum{ color:#8b8368; }
+.paper .insert-here-btn{
+  display:flex; align-items:center; gap:6px; width:100%; justify-content:center;
+  border:1px dashed #d8d2ba; color:#a39c7d; background:transparent; font-size:11px;
+  padding:5px; border-radius:6px; margin:4px 0 16px; opacity:.5; transition:opacity .12s, background .12s;
+}
+.paper .insert-here-btn:hover{ opacity:1; background:#faf7ee; color:var(--pine-deep); border-color:var(--pine); }
+.hidden-sections-strip{
+  max-width:820px; margin:0 auto 10px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+  font-size:11.5px; color:var(--ink-soft); padding:0 2px;
+}
+.hidden-sections-strip .chip{
+  display:inline-flex; align-items:center; gap:5px; background:var(--pine-soft); color:var(--pine-deep);
+  border:1px solid #cfe0d5; border-radius:16px; padding:3px 5px 3px 10px;
+}
+.hidden-sections-strip .chip button{ border:none; background:#fff; border-radius:50%; width:18px; height:18px; font-size:10px; color:var(--pine-deep); }
+
+.paper table.resizable{ table-layout:fixed; }
+.paper table.resizable th, .paper table.resizable td{ position:relative; overflow-wrap:break-word; }
+.paper .col-resize{
+  position:absolute; top:0; right:-4px; width:8px; height:100%; cursor:col-resize; z-index:5;
+}
+.paper .col-resize:hover, .paper .col-resize:active{ background:rgba(182,144,47,.35); }
+.paper .ctl .mini-ctl.dup-btn{ color:var(--pine-deep); }
+.paper li .mini-ctl.dup-btn{ color:var(--pine-deep); }
+.paper .sec-note{
+  font-size:12px; font-style:italic; color:#8b8368; margin:6px 0 18px; padding:6px 10px;
+  border-left:3px solid #e4ddc9; background:#faf7ee; border-radius:0 6px 6px 0; white-space:pre-wrap;
+}
+.paper .sec-note-static{
+  font-size:12px; font-style:italic; color:#8b8368; margin:6px 0 14px; padding:6px 10px;
+  border-left:3px solid #e4ddc9; background:#faf7ee; border-radius:0 6px 6px 0;
+}
+
+.paper .logo-row-static{ display:flex; justify-content:center; align-items:center; gap:28px; margin-bottom:14px; }
+.paper .logo-row-static img{ height:64px; max-width:180px; object-fit:contain; }
+.paper h3.doctitle{ text-align:center; font-family:'Bai Jamjuree',sans-serif; margin-bottom:20px; }
+.paper .doctitle-label{ font-size:15px; font-weight:600; color:#12332a; margin-bottom:6px; }
+.paper .doctitle-th{ display:block; font-size:19px; font-weight:600; color:#12332a; }
+.paper .doctitle-en{ display:block; font-size:14px; font-weight:400; color:#12332a; margin-top:2px; }
+.paper .ed:empty:before{ content: attr(data-placeholder); color:#b9b195; font-style:italic; font-weight:400; }
+.paper span.ed:empty{ display:inline-block; min-width:90px; min-height:1.3em; }
+.paper td.ed:empty, .paper th.ed:empty{ min-height:1.6em; }
+.paper div.ed.ed-block:empty{ min-height:1.6em; }
+.paper h4.sec{
+  font-family:'Bai Jamjuree',sans-serif; font-size:14.5px; color:#12332a; margin:22px 0 8px;
+  padding-bottom:4px; border-bottom:2px solid #b6902f;
+}
+.paper h4.sec:first-of-type{ margin-top:0; }
+.paper p{ margin:0 0 8px; white-space:pre-wrap; }
+.paper table{ width:100%; border-collapse:collapse; margin-bottom:6px; font-size:12.5px; }
+.paper table th, .paper table td{ border:1px solid #cfcab5; padding:6px 8px; text-align:left; vertical-align:top; white-space:pre-wrap; }
+.paper table th{ background:#eef3ea; color:#12332a; font-weight:600; }
+.paper table td.num, .paper table th.num{ text-align:center; white-space:nowrap; }
+.paper .genrow th{ width:30%; background:#f4f1e4; }
+.paper ol, .paper ul{ margin:0 0 8px; padding-left:22px; }
+.paper li{ margin-bottom:3px; }
+.paper .muted{ color:#8b8368; font-style:italic; }
+.paper .total-row td{ font-weight:700; background:#f4f1e4; }
+
+/* misc */
+.savebar{ display:flex; gap:8px; margin-bottom:14px; }
+.savebar input{ flex:1; }
+.libitem{ display:flex; align-items:center; gap:8px; padding:7px 8px; border:1px solid var(--line); border-radius:7px; margin-bottom:6px; font-size:12.5px; }
+.libitem .meta{ flex:1; overflow:hidden; }
+.libitem .meta b{ display:block; font-size:13px; }
+.libitem .meta span{ color:var(--ink-soft); font-size:11px; }
+.toast{
+  position:fixed; bottom:calc(18px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%);
+  background:var(--pine-deep); color:#fff; padding:10px 18px; border-radius:30px; font-size:13px; z-index:99;
+  box-shadow:0 6px 20px rgba(0,0,0,.25); opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(10,15,10,.5); z-index:80; display:none;
+  align-items:center; justify-content:center; padding:20px;
+}
+.modal-backdrop.show{ display:flex; }
+.modal{ background:var(--panel); border-radius:12px; padding:18px; width:100%; max-width:420px; max-height:80vh; overflow:auto; }
+.modal.help-modal{ max-width:560px; }
+.help-body{ font-size:13px; line-height:1.6; color:var(--ink); }
+.help-sec{ padding:10px 0; border-bottom:1px solid var(--line); }
+.help-sec:last-child{ border-bottom:none; }
+.help-sec b{ display:block; margin-bottom:4px; color:var(--pine-deep); font-size:13.5px; }
+.help-sec p{ margin:0; color:var(--ink); }
+.modal h3{ font-size:15px; margin-bottom:10px; color:var(--pine-deep); }
+.modal .close{ margin-top:10px; width:100%; padding:9px; border-radius:8px; border:1px solid var(--line); background:var(--panel); }
+
+@media (max-width:980px){
+  .doc-shell{ padding:14px 8px 80px; }
+  .paper{ padding:26px 16px 40px; }
+  .topbar .brand .txt span{ display:none; }
+}
+@media print{ .topbar, .doc-tip{ display:none !important; } }
+</style>
+</head>
+<body>
+
+<div class="sticky-head">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">📘</div>
+      <div class="txt"><h1>ระบบสร้างแผนการสอนรายวิชา</h1><span>พิมพ์แก้ไขตรงในเอกสารได้เลย → ส่งออกเป็น Word / PDF / HTML</span></div>
+    </div>
+    <div class="tools">
+      <button class="tbtn" id="btnHelp">❓ วิธีใช้</button>
+      <button class="tbtn" id="btnLibrary">📂 ไฟล์ที่บันทึกไว้</button>
+      <button class="tbtn" id="btnNew">＋ วิชาใหม่</button>
+      <button class="tbtn" id="btnSave">💾 บันทึก</button>
+      <button class="tbtn" id="btnImportJson">📥 นำเข้า .json</button>
+      <button class="tbtn" id="btnExportJson"><span class="ftype-icon" style="background:#5F6368;">{ }</span> .json</button>
+      <button class="tbtn primary" id="btnHtml"><span class="ftype-icon" style="background:#E9692C;">&lt;/&gt;</span> HTML</button>
+      <button class="tbtn primary" id="btnDocx"><span class="ftype-icon" style="background:#2B579A;">W</span> Word</button>
+      <button class="tbtn primary" id="btnPdf"><span class="ftype-icon" style="background:#D93025; font-size:7.5px;">PDF</span> PDF</button>
+    </div>
+  </div>
+  <div id="autosaveNote" style="text-align:center;font-size:11px;color:var(--ink-soft);background:var(--panel);padding:6px 10px;"></div>
+
+  <div class="fmtbar" id="fmtbar">
+    <button type="button" class="fbtn" data-fmt="bold" title="ตัวหนา"><b>B</b></button>
+    <button type="button" class="fbtn" data-fmt="italic" title="ตัวเอียง"><i>I</i></button>
+    <button type="button" class="fbtn" data-fmt="underline" title="ขีดเส้นใต้"><u>U</u></button>
+    <span class="fsep"></span>
+    <select id="fFont" class="fselect" title="แบบอักษร">
+      <option value="">แบบอักษร</option>
+      <option value="'Bai Jamjuree',sans-serif">Bai Jamjuree</option>
+      <option value="'Sarabun',sans-serif">Sarabun</option>
+      <option value="'Noto Serif Thai',serif">Noto Serif Thai</option>
+      <option value="Arial,sans-serif">Arial</option>
+      <option value="'Times New Roman',serif">Times New Roman</option>
+    </select>
+    <select id="fSize" class="fselect" title="ขนาดตัวอักษร">
+      <option value="">ขนาด</option>
+      <option value="12">12</option>
+      <option value="14">14</option>
+      <option value="16">16</option>
+      <option value="18">18</option>
+      <option value="20">20</option>
+      <option value="24">24</option>
+      <option value="28">28</option>
+    </select>
+    <input type="color" id="fColor" class="fcolor" title="สีตัวอักษร" value="#12332a">
+    <span class="fsep"></span>
+    <button type="button" class="fbtn" data-align="left" title="ชิดซ้าย">⟸</button>
+    <button type="button" class="fbtn" data-align="center" title="กึ่งกลาง">≡</button>
+    <button type="button" class="fbtn" data-align="right" title="ชิดขวา">⟹</button>
+    <span class="fsep"></span>
+    <button type="button" class="fbtn fclear" id="fClear" title="ล้างรูปแบบ">✕ ล้างรูปแบบ</button>
+    <span class="fhint" id="fHint">คลิกข้อความในเอกสารก่อน แล้วค่อยจัดรูปแบบ</span>
+  </div>
+</div>
+
+<div class="doc-shell">
+  <div class="doc-scroll">
+    <div class="doc-tip">✏️ คลิกตรงไหนในเอกสารก็พิมพ์แก้ไขได้เลย — ใช้ปุ่ม <b>+</b> / <b>✕</b> ในเอกสารเพื่อเพิ่ม-ลบแถวหรือรายการ</div>
+    <div class="hidden-sections-strip" id="hiddenStrip"></div>
+    <div id="paperZoomWrap">
+      <div class="paper" id="paper"></div>
+    </div>
+  </div>
+</div>
+
+<div class="zoombar" id="zoombar">
+  <button type="button" id="zOut" title="ย่อ">－</button>
+  <span id="zLevel">100%</span>
+  <button type="button" id="zIn" title="ขยาย">＋</button>
+  <button type="button" id="zReset" title="รีเซ็ตเป็น 100%">↺</button>
+</div>
+
+<input type="file" id="logoFileInput" accept="image/*" style="display:none">
+<input type="file" id="jsonFileInput" accept=".json,application/json" style="display:none">
+<div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="helpModal">
+  <div class="modal help-modal">
+    <h3>วิธีใช้งานระบบนี้</h3>
+    <div class="help-body">
+
+      <div class="help-sec">
+        <b>✏️ พิมพ์แก้ไข</b>
+        <p>คลิก/แตะข้อความส่วนไหนในเอกสารก็พิมพ์แก้ไขได้ทันที เหมือนแก้เอกสาร Word — ไม่ต้องกดปุ่มอะไรก่อน ถ้าวางข้อความจากที่อื่นมา ระบบจะตัดรูปแบบเดิมทิ้งให้อัตโนมัติ เหลือแค่ข้อความล้วนที่ตรงกับฟอร์แมตของเอกสาร</p>
+      </div>
+
+      <div class="help-sec">
+        <b>➕✕ เพิ่ม / ลบ / ย้าย / คัดลอก แถวและรายการ</b>
+        <p>ทุกตารางและทุกรายการ (จุดมุ่งหมาย, ข้อตกลง, สื่อการเรียนรู้ ฯลฯ) มีปุ่มใต้ตาราง <b>"+ เพิ่ม..."</b> สำหรับเพิ่มแถว/ข้อใหม่ท้ายสุด — <b>แถวใหม่จะว่างเปล่า</b> ให้สังเกตกล่องจาง ๆ ที่ขึ้นข้อความจาง ๆ ว่า "พิมพ์ที่นี่..." คลิกตรงนั้นแล้วพิมพ์ได้เลย แต่ละแถว/ข้อมีปุ่มเล็ก ๆ กำกับ: <b>↑ ↓</b> ย้ายตำแหน่ง, <b>📋</b> คัดลอกแถวนี้ (พร้อมรูปแบบตัวอักษรที่เคยตั้งไว้), <b>✕</b> ลบทิ้ง</p>
+      </div>
+
+      <div class="help-sec">
+        <b>↔️ ปรับความกว้างคอลัมน์</b>
+        <p>ลากที่เส้นแบ่งหัวตาราง (ตรงที่ cursor เปลี่ยนเป็นลูกศรซ้าย-ขวา) เพื่อปรับความกว้างคอลัมน์เอง ระบบจะจำไว้ให้ ถ้าอยากกลับไปใช้ขนาดอัตโนมัติเหมือนเดิม กดปุ่ม <b>↺</b> เล็ก ๆ ที่มุมซ้ายบนของตารางนั้น</p>
+      </div>
+
+      <div class="help-sec">
+        <b>🅱️ จัดรูปแบบตัวอักษร</b>
+        <p>คลิกเลือกข้อความในเอกสารก่อน 1 ครั้ง แล้วใช้แถบเครื่องมือด้านบน (ตัวหนา/เอียง/ขีดเส้นใต้, แบบอักษร, ขนาด, สี, จัดชิดซ้าย-กลาง-ขวา) ปุ่ม <b>✕ ล้างรูปแบบ</b> ใช้ยกเลิกการจัดรูปแบบทั้งหมดของช่องนั้น</p>
+      </div>
+
+      <div class="help-sec">
+        <b>🔍 ซูมเข้า-ออก</b>
+        <p>ปุ่ม － / ＋ มุมขวาล่างของจอ ซูมเข้าไปที่ตัวกระดาษเพื่อแก้ไขให้เห็นชัดขึ้นได้ (ไม่ใช่ซูมทั้งหน้าเว็บ) กด ↺ เพื่อกลับ 100%</p>
+      </div>
+
+      <div class="help-sec">
+        <b>📑 ซ่อน / แทรก / เพิ่มหมายเหตุ ในแต่ละหัวข้อ</b>
+        <p>ชี้เมาส์ไปที่หัวข้อไหนจะเห็นปุ่ม <b>🙈 ซ่อน</b> (เลขข้อจะเรียงใหม่ให้อัตโนมัติ) หัวข้อที่ซ่อนไว้ดูและกดคืนกลับได้ที่แถบเล็ก ๆ เหนือเอกสาร ใต้ทุกหัวข้อมีปุ่ม <b>➕ แทรกหัวข้อใหม่ตรงนี้</b> สำหรับสร้างหัวข้อของตัวเอง (ใส่ชื่อ+เนื้อหา และเพิ่มตารางเองได้ด้วย) พร้อมปุ่ม ↑↓ ย้ายตำแหน่ง, 📋 คัดลอกทั้งหัวข้อ, ✕ ลบ และใต้เนื้อหาทุกหัวข้อ (ทั้งหัวข้อเดิมและที่แทรกเอง) จะมีช่องหมายเหตุจาง ๆ ให้คลิกพิมพ์เพิ่มได้ ถ้าไม่กรอกจะไม่แสดงในไฟล์ที่ส่งออก</p>
+      </div>
+
+      <div class="help-sec">
+        <b>🖼️ โลโก้</b>
+        <p>เหนือชื่อวิชา กดปุ่ม "+ โลโก้มหาวิทยาลัย" / "+ โลโก้คณะ" เพื่ออัปโหลดรูป มีปุ่ม ✕ มุมขวาบนของโลโก้ไว้ลบ/เปลี่ยนใหม่</p>
+      </div>
+
+      <div class="help-sec">
+        <b>💾 บันทึกและจัดการไฟล์</b>
+        <p>กด <b>💾 บันทึก</b> เพื่อเก็บวิชานี้ไว้ในเบราว์เซอร์ กลับมาเปิดดู/แก้ต่อได้ที่ <b>📂 ไฟล์ที่บันทึกไว้</b> เมื่อจะเริ่มวิชาใหม่ กด <b>＋ วิชาใหม่</b> — ข้อมูลร่างปัจจุบันจะถูกบันทึกอัตโนมัติในเบราว์เซอร์นี้ตลอดเวลาอยู่แล้ว ปิดหน้าไปแล้วเปิดใหม่ก็ยังอยู่ครบ</p>
+      </div>
+
+      <div class="help-sec">
+        <b>⇩ ดาวน์โหลดไฟล์</b>
+        <p>กด <b>Word / PDF / HTML</b> เพื่อดาวน์โหลดเอกสารฉบับสมบูรณ์ (ไม่มีปุ่มแก้ไขติดไปด้วย) หรือกด <b>.json</b> เพื่อบันทึกข้อมูลดิบทั้งหมดไว้ backup หรือส่งให้คนอื่นแก้ต่อผ่าน <b>📥 นำเข้า .json</b> — ถ้าเบราว์เซอร์รองรับ จะมีหน้าต่างให้เลือกโฟลเดอร์และตั้งชื่อไฟล์เองก่อนบันทึกด้วย</p>
+      </div>
+
+    </div>
+    <button class="close" id="helpClose">เข้าใจแล้ว เริ่มใช้งาน</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="libModal">
+  <div class="modal">
+    <h3>ไฟล์แผนการสอนที่บันทึกไว้</h3>
+    <div id="libList"></div>
+    <button class="close" id="libClose">ปิด</button>
+  </div>
+</div>
+
+<script>
+/* ============================= STATE ============================= */
+let S = null;
+const STORAGE_CURRENT = 'syllabus_current_v1';
+const STORAGE_LIB = 'syllabus_library_v1';
+let uidCounter = 1;
+function uid(){ return 'x' + (uidCounter++) + Math.random().toString(36).slice(2,6); }
+
+function defaultData(){
+  return {
+    id: uid(),
+    title: 'ทักษะสีเขียวของคนรุ่นใหม่',
+    general: {
+      code: '01681111',
+      nameTh: 'ทักษะสีเขียวของคนรุ่นใหม่',
+      nameEn: 'Green Skills for New Generation',
+      credits: '2(2-0-4)',
+      curriculum: '1. วิทยาศาสตรบัณฑิต สาขาวิทยาศาสตร์และเทคโนโลยีสิ่งแวดล้อม\n2. วิทยาศาสตรบัณฑิต สาขาการจัดการสิ่งแวดล้อม',
+      semester: 'ภาคการศึกษาที่ 1 ปีการศึกษา 2569',
+      groups: 'วิทยาเขตบางเขน: หมู่ 1, หมู่ 2\nวิทยาเขตกำแพงแสน: หมู่ 700',
+      schedule: 'วิทยาเขตบางเขน: วันจันทร์ เวลา 13.00-15.00 น.\nวิทยาเขตกำแพงแสน: วันพุธ เวลา 13.00-15.00 น.',
+      rooms: 'วิทยาเขตบางเขน: ห้องประชุมใหญ่ ชั้น 2 อาคาร EV1\nวิทยาเขตกำแพงแสน: ศร.2 ห้อง 203',
+      coordinators: 'อ.ดร. ผู้รับผิดชอบรายวิชา หมู่ 1\nผศ.ดร. ผู้รับผิดชอบรายวิชา หมู่ 2',
+      instructors: '1. ผศ.ดร. ชื่ออาจารย์ผู้สอนคนที่ 1\n2. ผศ.ดร. ชื่ออาจารย์ผู้สอนคนที่ 2',
+      contact: 'กลุ่มไลน์ของรายวิชา / อีเมลของอาจารย์ผู้รับผิดชอบรายวิชา',
+      consult: 'ตามช่วงเวลาที่นัดหมาย'
+    },
+    description: 'คำอธิบายเนื้อหาโดยสรุปของรายวิชา ครอบคลุมหัวข้อหลักและทักษะที่นิสิตจะได้รับ',
+    objectives: [
+      'ปลูกฝังความรู้ ความเข้าใจ และเจตคติที่ดีต่อเนื้อหาของรายวิชา',
+      'ส่งเสริมการเรียนรู้เชิงรุกผ่านกิจกรรมและกรณีศึกษา',
+      'พัฒนาทักษะที่จำเป็นต่อการเรียนและการประกอบวิชาชีพ'
+    ],
+    clos: [
+      { id: uid(), code:'CLO1', text:'อธิบายแนวคิดหลักของรายวิชาได้' },
+      { id: uid(), code:'CLO2', text:'วิเคราะห์และประยุกต์ใช้ความรู้ในสถานการณ์จริงได้' },
+      { id: uid(), code:'CLO3', text:'สื่อสารแนวคิดและผลงานได้อย่างเหมาะสม' },
+      { id: uid(), code:'CLO4', text:'ทำงานร่วมกับผู้อื่นด้วยความรับผิดชอบและซื่อสัตย์' }
+    ],
+    curricula: [ { id: uid(), name:'หลักสูตร ก' }, { id: uid(), name:'หลักสูตร ข' } ],
+    alignment: {},
+    teachingMethods: [
+      { id: uid(), name:'การบรรยายและอภิปราย', detail:'Mini lecture ประกอบการอภิปรายและแลกเปลี่ยนความคิดเห็น' },
+      { id: uid(), name:'การทำกิจกรรมในชั้นเรียน', detail:'กิจกรรมเชิงรุกและกรณีศึกษาที่เกี่ยวข้องกับเนื้อหา' },
+      { id: uid(), name:'การทำงานกลุ่ม/โครงงาน', detail:'นิสิตทำงานกลุ่มเพื่อออกแบบและนำเสนอผลงาน' }
+    ],
+    weeks: [
+      { id: uid(), no:'1', datetime:'สัปดาห์ที่ 1', topic:'หัวข้อการเรียนรู้สัปดาห์ที่ 1', llo:'ผลลัพธ์การเรียนรู้ที่เกี่ยวข้อง', tla:'กิจกรรมการเรียนรู้', assessment:'วิธีประเมินผล', instructor:'ชื่ออาจารย์ผู้สอน' },
+      { id: uid(), no:'2', datetime:'สัปดาห์ที่ 2', topic:'หัวข้อการเรียนรู้สัปดาห์ที่ 2', llo:'ผลลัพธ์การเรียนรู้ที่เกี่ยวข้อง', tla:'กิจกรรมการเรียนรู้', assessment:'วิธีประเมินผล', instructor:'ชื่ออาจารย์ผู้สอน' }
+    ],
+    assessmentItems: [
+      { id: uid(), item:'Quiz / Concept Check', score:'10', clo:'CLO1', timing:'ตลอดภาคการศึกษา' },
+      { id: uid(), item:'Worksheet / Case Analysis', score:'20', clo:'CLO1, CLO2', timing:'ทุกสัปดาห์' },
+      { id: uid(), item:'โครงงานกลุ่ม', score:'30', clo:'CLO3, CLO4', timing:'ช่วงท้ายภาคการศึกษา' },
+      { id: uid(), item:'การมีส่วนร่วมในชั้นเรียน', score:'10', clo:'CLO4', timing:'ตลอดภาคการศึกษา' }
+    ],
+    qualityLevels: [
+      { id: uid(), level:'ดีเยี่ยม', desc:'ผลงานถูกต้อง ครบถ้วน วิเคราะห์ได้ลึกซึ้ง มีความคิดสร้างสรรค์ และสื่อสารได้ชัดเจน' },
+      { id: uid(), level:'ดี', desc:'ผลงานถูกต้องเป็นส่วนใหญ่ วิเคราะห์และอธิบายได้เหมาะสม แต่ยังพัฒนาให้ลึกซึ้งขึ้นได้' },
+      { id: uid(), level:'พอใช้', desc:'ผลงานแสดงความเข้าใจพื้นฐาน แต่ยังขาดความครบถ้วนหรือความลึกซึ้ง' },
+      { id: uid(), level:'ควรปรับปรุง', desc:'ผลงานยังไม่สะท้อนความเข้าใจตามที่รายวิชากำหนด หรือมีข้อผิดพลาดสำคัญ' }
+    ],
+    gradeCutoffs: [
+      { id: uid(), range:'80–100', grade:'A' },{ id: uid(), range:'75–79', grade:'B+' },
+      { id: uid(), range:'70–74', grade:'B' },{ id: uid(), range:'65–69', grade:'C+' },
+      { id: uid(), range:'60–64', grade:'C' },{ id: uid(), range:'55–59', grade:'D+' },
+      { id: uid(), range:'50–54', grade:'D' },{ id: uid(), range:'ต่ำกว่า 50', grade:'F' }
+    ],
+    resources: {
+      main: ['เอกสาร/สไลด์ประกอบการเรียนรู้จากอาจารย์ผู้สอน'],
+      supplementary: ['ใบงานและแบบฝึกกิจกรรมที่เกี่ยวข้อง', 'กรณีศึกษาประกอบเนื้อหารายวิชา'],
+      other: ['แหล่งข้อมูลออนไลน์ที่เกี่ยวข้องกับรายวิชา']
+    },
+    feedback: [
+      { id: uid(), method:'การให้ข้อเสนอแนะระหว่างเรียน', timing:'ระหว่างกิจกรรมในชั้นเรียน' },
+      { id: uid(), method:'การแจ้งผลคะแนนและแนวทางพัฒนา', timing:'หลังการประเมินแต่ละครั้ง ตาม CLO ที่เกี่ยวข้อง' }
+    ],
+    agreements: [
+      'เข้าเรียนตรงเวลา และมีส่วนร่วมในกิจกรรมการเรียนรู้',
+      'ส่งงานตามกำหนดเวลาและรูปแบบที่กำหนด',
+      'ทำงานด้วยความซื่อสัตย์ทางวิชาการ ไม่คัดลอกผลงานของผู้อื่น',
+      'เคารพความคิดเห็นของเพื่อนและอาจารย์'
+    ],
+    message: 'รายวิชานี้มุ่งเน้นให้นิสิตเรียนรู้ผ่านการคิด วิเคราะห์ ฝึกปฏิบัติ และประยุกต์ใช้ความรู้ในสถานการณ์จริง นิสิตจึงควรมีส่วนร่วมในการเรียนรู้อย่างสม่ำเสมอ',
+    appendixNotes: {},
+    logos: { uni: null, faculty: null },
+    fmt: {},
+    sectionMeta: {
+      general:{visible:true}, description:{visible:true}, objectives:{visible:true}, clo:{visible:true},
+      alignment:{visible:true}, methods:{visible:true}, weeks:{visible:true}, assessment:{visible:true},
+      quality:{visible:true}, grades:{visible:true}, resources:{visible:true}, feedback:{visible:true},
+      agreements:{visible:true}, message:{visible:true}
+    },
+    customSections: [],
+    sectionNotes: {},
+    colWidths: {}
+  };
+}
+
+/* ---- dynamic section order / numbering (built-in sections keep fixed relative order;
+   hiding one skips its number; custom sections can be inserted at any of the 15 anchor
+   points and moved earlier/later, and always get the next running number) ---- */
+const BUILTIN_SECTION_TITLES = {
+  general:'ข้อมูลทั่วไปของรายวิชา', description:'คำอธิบายรายวิชา', objectives:'จุดมุ่งหมายของรายวิชา',
+  clo:'ผลลัพธ์การเรียนรู้ของรายวิชา (CLO)', alignment:'ความเชื่อมโยงของรายวิชากับผลลัพธ์การเรียนรู้ของหลักสูตร (CLO–PLO)',
+  methods:'รูปแบบการจัดการเรียนการสอน', weeks:'แผนการเรียนรู้รายสัปดาห์', assessment:'การประเมินผลการเรียนรู้',
+  quality:'เกณฑ์การประเมินผลงานโดยสรุป', grades:'เกณฑ์การตัดสินผลการเรียน', resources:'สื่อการเรียนรู้และแหล่งค้นคว้า',
+  feedback:'การให้ข้อมูลป้อนกลับแก่นิสิต', agreements:'ข้อตกลงในการเรียน', message:'ข้อความถึงนิสิต'
+};
+const ANCHOR_SEQUENCE = ['start','general','description','objectives','clo','alignment','methods','weeks','assessment','quality','grades','resources','feedback','agreements','message'];
+
+function isSecVisible(id){
+  const m = S.sectionMeta && S.sectionMeta[id];
+  return !m || m.visible !== false;
+}
+function computeSectionNumbers(){
+  const nums = {};
+  let n = 0;
+  ANCHOR_SEQUENCE.forEach(anchor=>{
+    if(anchor !== 'start'){
+      if(isSecVisible(anchor)){ n++; nums[anchor] = n; }
+    }
+    S.customSections.filter(c=>c.anchor===anchor).forEach(c=>{ n++; nums['custom:'+c.id] = n; });
+  });
+  return nums;
+}
+function moveCustomSection(id, dir){
+  const c = S.customSections.find(x=>x.id===id);
+  if(!c) return;
+  const idx = ANCHOR_SEQUENCE.indexOf(c.anchor);
+  const next = idx + dir;
+  if(next>=0 && next<ANCHOR_SEQUENCE.length) c.anchor = ANCHOR_SEQUENCE[next];
+}
+function addCustomSection(afterAnchor){
+  const c = { id: uid(), title:'หัวข้อใหม่', body:'', anchor: afterAnchor || 'message', table:null };
+  S.customSections.push(c);
+  return c;
+}
+function addCustomTable(secId){
+  const c = S.customSections.find(x=>x.id===secId);
+  if(!c || c.table) return;
+  const h1 = uid(), h2 = uid();
+  c.table = {
+    headers: [{id:h1, label:'หัวข้อ 1'}, {id:h2, label:'หัวข้อ 2'}],
+    rows: [{id:uid(), cells:{}}]
+  };
+}
+function removeCustomTable(secId){
+  const c = S.customSections.find(x=>x.id===secId);
+  if(c) c.table = null;
+}
+function addCustomTableColumn(secId){
+  const c = S.customSections.find(x=>x.id===secId);
+  if(!c || !c.table) return;
+  c.table.headers.push({id:uid(), label:'หัวข้อ'+(c.table.headers.length+1)});
+}
+function removeCustomTableColumn(secId, headerId){
+  const c = S.customSections.find(x=>x.id===secId);
+  if(!c || !c.table) return;
+  c.table.headers = c.table.headers.filter(h=>h.id!==headerId);
+  c.table.rows.forEach(r=>{ delete r.cells[headerId]; });
+}
+function addCustomTableRow(secId){
+  const c = S.customSections.find(x=>x.id===secId);
+  if(!c || !c.table) return;
+  c.table.rows.push({id:uid(), cells:{}});
+}
+function removeCustomTableRow(secId, rowId){
+  const c = S.customSections.find(x=>x.id===secId);
+  if(!c || !c.table) return;
+  c.table.rows = c.table.rows.filter(r=>r.id!==rowId);
+}
+function moveCustomTableRow(secId, rowId, dir){
+  const c = S.customSections.find(x=>x.id===secId);
+  if(!c || !c.table) return;
+  const arr = c.table.rows;
+  const idx = arr.findIndex(r=>r.id===rowId);
+  if(idx<0) return;
+  const j = idx+dir;
+  if(j<0 || j>=arr.length) return;
+  const tmp = arr[idx]; arr[idx]=arr[j]; arr[j]=tmp;
+}
+
+/* ============================= STORAGE ============================= */
+function saveCurrent(){ try{ localStorage.setItem(STORAGE_CURRENT, JSON.stringify(S)); if(typeof noteAutosaved==='function') noteAutosaved(); }catch(e){} }
+function loadCurrent(){
+  try{ const raw = localStorage.getItem(STORAGE_CURRENT); if(raw) return JSON.parse(raw); }catch(e){}
+  return null;
+}
+function getLibrary(){
+  try{ const raw = localStorage.getItem(STORAGE_LIB); return raw? JSON.parse(raw): []; }catch(e){ return []; }
+}
+function setLibrary(lib){ try{ localStorage.setItem(STORAGE_LIB, JSON.stringify(lib)); }catch(e){} }
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ============================= INIT ============================= */
+function normalizeState(state){
+  if(!state.logos) state.logos = { uni:null, faculty:null };
+  if(!state.fmt) state.fmt = {};
+  if(!state.sectionMeta) state.sectionMeta = {
+    general:{visible:true}, description:{visible:true}, objectives:{visible:true}, clo:{visible:true},
+    alignment:{visible:true}, methods:{visible:true}, weeks:{visible:true}, assessment:{visible:true},
+    quality:{visible:true}, grades:{visible:true}, resources:{visible:true}, feedback:{visible:true},
+    agreements:{visible:true}, message:{visible:true}
+  };
+  if(!state.customSections) state.customSections = [];
+  state.customSections.forEach(c=>{ if(c.table === undefined) c.table = null; });
+  if(!state.sectionNotes) state.sectionNotes = {};
+  if(!state.colWidths) state.colWidths = {};
+  return state;
+}
+S = normalizeState(loadCurrent() || defaultData());
+
+/* ============================= HELPERS ============================= */
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function nl2list(text){
+  return String(text||'').split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+}
+
+/* ============================= PREVIEW ============================= */
+function totalScore(){
+  return S.assessmentItems.reduce((sum,it)=> sum + (parseFloat(it.score)||0), 0);
+}
+
+function sectionNoteStatic(secKey){
+  const val = (S.sectionNotes && S.sectionNotes[secKey]) || '';
+  if(!val.trim()) return '';
+  const key = fmtKeyNote(secKey);
+  return `<p class="sec-note-static"${styleAttr(key)}><b>หมายเหตุ:</b> ${escapeHtml(val)}</p>`;
+}
+function secTailStatic(anchor, NUM){
+  return sectionNoteStatic(anchor) + renderCustomsAtStatic(anchor, NUM);
+}
+function customTableStaticHtml(c){
+  if(!c.table || !c.table.headers.length) return '';
+  const t = c.table;
+  let h = `<table data-header-rows="1"><tr>`;
+  t.headers.forEach(hd=>{ h += `<th${styleAttr(fmtKeyCustom(c.id,'colhead:'+hd.id))}>${escapeHtml(hd.label)}</th>`; });
+  h += `</tr>`;
+  t.rows.forEach(r=>{
+    h += `<tr>`;
+    t.headers.forEach(hd=>{ h += `<td${styleAttr(fmtKeyCustom(c.id,'cell:'+r.id+':'+hd.id))}>${escapeHtml(r.cells[hd.id]||'')}</td>`; });
+    h += `</tr>`;
+  });
+  h += `</table>`;
+  return h;
+}
+function renderCustomsAtStatic(anchor, NUM){
+  let h = '';
+  S.customSections.filter(c=>c.anchor===anchor).forEach(c=>{
+    const tkey = fmtKeyCustom(c.id,'title'), bkey = fmtKeyCustom(c.id,'body');
+    h += `<h4 class="sec"${styleAttr(tkey)}>${NUM['custom:'+c.id]}. ${escapeHtml(c.title)}</h4>`;
+    if(c.body && c.body.trim()) h += `<p${styleAttr(bkey)}>${escapeHtml(c.body)}</p>`;
+    h += customTableStaticHtml(c);
+  });
+  return h;
+}
+
+function buildPreviewHTML(){
+  const g = S.general;
+  let h = '';
+  if(S.logos && (S.logos.uni || S.logos.faculty)){
+    h += `<div class="logo-row-static">`;
+    if(S.logos.uni) h += `<img src="${S.logos.uni}" alt="โลโก้มหาวิทยาลัย">`;
+    if(S.logos.faculty) h += `<img src="${S.logos.faculty}" alt="โลโก้คณะ">`;
+    h += `</div>`;
+  }
+  const thFmt = fmtToStyle(S.fmt && S.fmt[fmtKeyScalar('general.nameTh')]);
+  const enFmt = fmtToStyle(S.fmt && S.fmt[fmtKeyScalar('general.nameEn')]);
+  h += `<h3 class="doctitle">แผนการสอนรายวิชา<br><span${thFmt? ` style="${thFmt}"`:''}>${escapeHtml(g.nameTh||'ชื่อรายวิชา')}</span>${g.nameEn? ` <span style="font-weight:400;font-size:14px;${enFmt}">(${escapeHtml(g.nameEn)})</span>` : ''}</h3>`;
+
+  const NUM = computeSectionNumbers();
+  h += renderCustomsAtStatic('start', NUM);
+
+  if(isSecVisible('general')){
+  h += `<h4 class="sec">${NUM.general}. ${BUILTIN_SECTION_TITLES.general}</h4><table>`;
+  const genRows = [
+    ['รหัสรายวิชา', g.code, 'general.code'], ['ชื่อรายวิชา', escapeHtml(g.nameTh)+(g.nameEn?'<br>'+escapeHtml(g.nameEn):''), 'general.nameTh'],
+    ['จำนวนหน่วยกิต', g.credits, 'general.credits'], ['หลักสูตร', g.curriculum, 'general.curriculum'],
+    ['ภาคการศึกษา / ปีการศึกษา', g.semester, 'general.semester'], ['กลุ่มเรียน / หมู่เรียน', g.groups, 'general.groups'],
+    ['วัน เวลาเรียน', g.schedule, 'general.schedule'], ['ห้องเรียน / ช่องทางการเรียนออนไลน์', g.rooms, 'general.rooms'],
+    ['อาจารย์ผู้รับผิดชอบรายวิชา', g.coordinators, 'general.coordinators'], ['อาจารย์ผู้สอน', g.instructors, 'general.instructors'],
+    ['ช่องทางการติดต่ออาจารย์', g.contact, 'general.contact'], ['ช่วงเวลาที่นิสิตขอคำปรึกษา', g.consult, 'general.consult']
+  ];
+  genRows.forEach(([k,v,path])=>{ h += `<tr class="genrow"><th>${k}</th><td${styleAttr(fmtKeyScalar(path))}>${v && v.includes('<br>')? v : escapeHtml(v)}</td></tr>`; });
+  h += `</table>`;
+  } h += secTailStatic('general', NUM);
+
+  if(isSecVisible('description')){
+  h += `<h4 class="sec">${NUM.description}. ${BUILTIN_SECTION_TITLES.description}</h4><p${styleAttr(fmtKeyScalar('description'))}>${escapeHtml(S.description)}</p>`;
+  } h += secTailStatic('description', NUM);
+
+  if(isSecVisible('objectives')){
+  h += `<h4 class="sec">${NUM.objectives}. ${BUILTIN_SECTION_TITLES.objectives}</h4><ol>`;
+  S.objectives.forEach((o,i)=>{ if(o.trim()) h += `<li${styleAttr(fmtKeyList('objectives',i))}>${escapeHtml(o)}</li>`; });
+  h += `</ol>`;
+  } h += secTailStatic('objectives', NUM);
+
+  if(isSecVisible('clo')){
+  h += `<h4 class="sec">${NUM.clo}. ${BUILTIN_SECTION_TITLES.clo}</h4><table data-header-rows="1"><tr><th>CLO</th><th>ผลลัพธ์การเรียนรู้ของรายวิชา</th></tr>`;
+  S.clos.forEach(c=>{ h += `<tr><td class="num"${styleAttr(fmtKeyArr('clos',c.id,'code'))}>${escapeHtml(c.code)}</td><td${styleAttr(fmtKeyArr('clos',c.id,'text'))}>${escapeHtml(c.text)}</td></tr>`; });
+  h += `</table>`;
+  } h += secTailStatic('clo', NUM);
+
+  if(isSecVisible('alignment') && S.curricula.length){
+    h += `<h4 class="sec">${NUM.alignment}. ${BUILTIN_SECTION_TITLES.alignment}</h4><table data-header-rows="1"><tr><th>CLO</th>`;
+    S.curricula.forEach(cu=> h += `<th${styleAttr(fmtKeyCur(cu.id,'name'))}>${escapeHtml(cu.name)}</th>`);
+    h += `</tr>`;
+    S.clos.forEach(clo=>{
+      h += `<tr><td>${escapeHtml(clo.code)} ${escapeHtml(clo.text)}</td>`;
+      S.curricula.forEach(cu=>{ h += `<td${styleAttr(fmtKeyAlign(clo.id+'|'+cu.id))}>${escapeHtml(S.alignment[clo.id+'|'+cu.id]||'')}</td>`; });
+      h += `</tr>`;
+    });
+    h += `</table>`;
+  }
+  h += secTailStatic('alignment', NUM);
+
+  if(isSecVisible('methods')){
+  h += `<h4 class="sec">${NUM.methods}. ${BUILTIN_SECTION_TITLES.methods}</h4><table data-header-rows="1"><tr><th>รูปแบบการเรียนรู้</th><th>รายละเอียด</th></tr>`;
+  S.teachingMethods.forEach(m=>{ h += `<tr><td${styleAttr(fmtKeyArr('teachingMethods',m.id,'name'))}>${escapeHtml(m.name)}</td><td${styleAttr(fmtKeyArr('teachingMethods',m.id,'detail'))}>${escapeHtml(m.detail)}</td></tr>`; });
+  h += `</table>`;
+  } h += secTailStatic('methods', NUM);
+
+  if(isSecVisible('weeks')){
+  h += `<h4 class="sec">${NUM.weeks}. ${BUILTIN_SECTION_TITLES.weeks}</h4><table data-header-rows="1"><tr><th class="num">สัปดาห์</th><th>หัวข้อการเรียนรู้</th><th>ผลลัพธ์การเรียนรู้ (LLO)</th><th>กิจกรรมการเรียนรู้ (TLA)</th><th>การประเมินผล</th><th>อาจารย์ผู้สอน</th></tr>`;
+  S.weeks.forEach(w=>{
+    h += `<tr><td class="num"${styleAttr(fmtKeyArr('weeks',w.id,'no'))}>${escapeHtml(w.no)}${w.datetime? '<br><span style=\"font-size:11px;color:#8b8368;\">'+escapeHtml(w.datetime)+'</span>':''}</td><td${styleAttr(fmtKeyArr('weeks',w.id,'topic'))}>${escapeHtml(w.topic)}</td><td${styleAttr(fmtKeyArr('weeks',w.id,'llo'))}>${escapeHtml(w.llo)}</td><td${styleAttr(fmtKeyArr('weeks',w.id,'tla'))}>${escapeHtml(w.tla)}</td><td${styleAttr(fmtKeyArr('weeks',w.id,'assessment'))}>${escapeHtml(w.assessment)}</td><td${styleAttr(fmtKeyArr('weeks',w.id,'instructor'))}>${escapeHtml(w.instructor)}</td></tr>`;
+  });
+  h += `</table>`;
+  } h += secTailStatic('weeks', NUM);
+
+  if(isSecVisible('assessment')){
+  h += `<h4 class="sec">${NUM.assessment}. ${BUILTIN_SECTION_TITLES.assessment}</h4><table data-header-rows="1"><tr><th>รายการประเมิน</th><th class="num">คะแนน</th><th>CLO ที่ประเมิน</th><th>ช่วงเวลาประเมิน</th></tr>`;
+  S.assessmentItems.forEach(a=>{ h += `<tr><td${styleAttr(fmtKeyArr('assessmentItems',a.id,'item'))}>${escapeHtml(a.item)}</td><td class="num"${styleAttr(fmtKeyArr('assessmentItems',a.id,'score'))}>${escapeHtml(a.score)}</td><td${styleAttr(fmtKeyArr('assessmentItems',a.id,'clo'))}>${escapeHtml(a.clo)}</td><td${styleAttr(fmtKeyArr('assessmentItems',a.id,'timing'))}>${escapeHtml(a.timing)}</td></tr>`; });
+  h += `<tr class="total-row"><td>รวม</td><td class="num">${totalScore()}</td><td colspan="2"></td></tr></table>`;
+  } h += secTailStatic('assessment', NUM);
+
+  if(isSecVisible('quality')){
+  h += `<h4 class="sec">${NUM.quality}. ${BUILTIN_SECTION_TITLES.quality}</h4><table data-header-rows="1"><tr><th>ระดับคุณภาพ</th><th>ลักษณะผลงานที่คาดหวัง</th></tr>`;
+  S.qualityLevels.forEach(q=>{ h += `<tr><td${styleAttr(fmtKeyArr('qualityLevels',q.id,'level'))}>${escapeHtml(q.level)}</td><td${styleAttr(fmtKeyArr('qualityLevels',q.id,'desc'))}>${escapeHtml(q.desc)}</td></tr>`; });
+  h += `</table>`;
+  } h += secTailStatic('quality', NUM);
+
+  if(isSecVisible('grades')){
+  h += `<h4 class="sec">${NUM.grades}. ${BUILTIN_SECTION_TITLES.grades}</h4><table data-header-rows="1"><tr><th class="num">ช่วงคะแนน</th><th class="num">ระดับคะแนน</th></tr>`;
+  S.gradeCutoffs.forEach(gc=>{ h += `<tr><td class="num"${styleAttr(fmtKeyArr('gradeCutoffs',gc.id,'range'))}>${escapeHtml(gc.range)}</td><td class="num"${styleAttr(fmtKeyArr('gradeCutoffs',gc.id,'grade'))}>${escapeHtml(gc.grade)}</td></tr>`; });
+  h += `</table>`;
+  } h += secTailStatic('grades', NUM);
+
+  if(isSecVisible('resources')){
+  h += `<h4 class="sec">${NUM.resources}. ${BUILTIN_SECTION_TITLES.resources}</h4>`;
+  h += `<p style="margin-bottom:4px;"><b>เอกสารหลัก</b></p><ol>`; S.resources.main.forEach((x,i)=>{ if(x.trim()) h += `<li${styleAttr(fmtKeyList('res-main',i))}>${escapeHtml(x)}</li>`; }); h += `</ol>`;
+  h += `<p style="margin-bottom:4px;"><b>เอกสารประกอบการเรียนรู้</b></p><ol>`; S.resources.supplementary.forEach((x,i)=>{ if(x.trim()) h += `<li${styleAttr(fmtKeyList('res-supp',i))}>${escapeHtml(x)}</li>`; }); h += `</ol>`;
+  h += `<p style="margin-bottom:4px;"><b>แหล่งเรียนรู้อื่น ๆ</b></p><ol>`; S.resources.other.forEach((x,i)=>{ if(x.trim()) h += `<li${styleAttr(fmtKeyList('res-other',i))}>${escapeHtml(x)}</li>`; }); h += `</ol>`;
+  } h += secTailStatic('resources', NUM);
+
+  if(isSecVisible('feedback')){
+  h += `<h4 class="sec">${NUM.feedback}. ${BUILTIN_SECTION_TITLES.feedback}</h4><table data-header-rows="1"><tr><th>รูปแบบการให้ข้อมูลป้อนกลับ</th><th>ช่วงเวลา / วิธีดำเนินการ</th></tr>`;
+  S.feedback.forEach(f=>{ h += `<tr><td${styleAttr(fmtKeyArr('feedback',f.id,'method'))}>${escapeHtml(f.method)}</td><td${styleAttr(fmtKeyArr('feedback',f.id,'timing'))}>${escapeHtml(f.timing)}</td></tr>`; });
+  h += `</table>`;
+  } h += secTailStatic('feedback', NUM);
+
+  if(isSecVisible('agreements')){
+  h += `<h4 class="sec">${NUM.agreements}. ${BUILTIN_SECTION_TITLES.agreements}</h4><ol>`;
+  S.agreements.forEach((a,i)=>{ if(a.trim()) h += `<li${styleAttr(fmtKeyList('agreements',i))}>${escapeHtml(a)}</li>`; });
+  h += `</ol>`;
+  } h += secTailStatic('agreements', NUM);
+
+  if(isSecVisible('message')){
+  h += `<h4 class="sec">${NUM.message}. ${BUILTIN_SECTION_TITLES.message}</h4><p${styleAttr(fmtKeyScalar('message'))}>${escapeHtml(S.message)}</p>`;
+  } h += secTailStatic('message', NUM);
+
+  h += `<h4 class="sec">ภาคผนวก: แนวทางการคำนวณผลสัมฤทธิ์ CLO</h4><table data-header-rows="1"><tr><th>CLO</th><th>แหล่งคะแนนที่ใช้คำนวณ</th><th>วิธีคำนวณ</th></tr>`;
+  S.clos.forEach(c=>{
+    let src = S.appendixNotes && S.appendixNotes[c.id];
+    if(!src){
+      const related = S.assessmentItems.filter(a=> (a.clo||'').split(',').map(s=>s.trim().toLowerCase()).includes((c.code||'').trim().toLowerCase()));
+      src = related.length? related.map(r=>r.item).join(', ') : '—';
+    }
+    h += `<tr><td class="num">${escapeHtml(c.code)}</td><td${styleAttr(fmtKeyAppendix(c.id))}>${escapeHtml(src)}</td><td>คะแนนที่ map กับ ${escapeHtml(c.code)} ÷ คะแนนเต็มของ ${escapeHtml(c.code)} × 100</td></tr>`;
+  });
+  h += `</table>`;
+  h += `<table data-header-rows="1"><tr><th>ระดับผลสัมฤทธิ์</th><th class="num">ช่วงคะแนน</th></tr>
+    <tr><td>บรรลุระดับสูง</td><td class="num">≥ 80%</td></tr>
+    <tr><td>บรรลุระดับปานกลาง</td><td class="num">70–79%</td></tr>
+    <tr><td>ควรพัฒนา</td><td class="num">&lt; 70%</td></tr></table>`;
+
+  return h;
+}
+
+/* ============================= EDITABLE DOCUMENT (type directly in the doc) ============================= */
+function getListArray(name){
+  if(name==='objectives') return S.objectives;
+  if(name==='agreements') return S.agreements;
+  if(name==='res-main') return S.resources.main;
+  if(name==='res-supp') return S.resources.supplementary;
+  if(name==='res-other') return S.resources.other;
+  return null;
+}
+function setPath(obj, path, value){
+  const parts = path.split('.');
+  let o = obj;
+  for(let i=0;i<parts.length-1;i++) o = o[parts[i]];
+  o[parts[parts.length-1]] = value;
+}
+
+function edField(arr, id, field, value, tag){
+  tag = tag || 'td';
+  const key = fmtKeyArr(arr, id, field);
+  return `<${tag} class="ed" contenteditable="true" data-arr="${arr}" data-id="${id}" data-field="${field}" data-fmtkey="${key}" data-placeholder="พิมพ์ที่นี่..."${styleAttr(key)}>${escapeHtml(value).replace(/\n/g,'<br>')}</${tag}>`;
+}
+function delRowBtn(arr, id){
+  return `<button class="mini-del" type="button" data-action="del-row" data-arr="${arr}" data-id="${id}" title="ลบแถวนี้">✕</button>`;
+}
+function ctlCell(arrName, id, idx, len){
+  const upDis = idx===0 ? ' disabled' : '';
+  const downDis = idx===len-1 ? ' disabled' : '';
+  return `<td class="ctl">
+    <button type="button" class="mini-ctl row-move"${upDis} data-action="row-up" data-arr="${arrName}" data-id="${id}" title="ย้ายขึ้น">↑</button>
+    <button type="button" class="mini-ctl row-move"${downDis} data-action="row-down" data-arr="${arrName}" data-id="${id}" title="ย้ายลง">↓</button>
+    <button type="button" class="mini-ctl dup-btn" data-action="dup-row" data-arr="${arrName}" data-id="${id}" title="คัดลอกแถวนี้">📋</button>
+    ${delRowBtn(arrName, id)}
+  </td>`;
+}
+function addRowBtn(arr, label){
+  return `<button class="add-row-btn" type="button" data-action="add-row" data-arr="${arr}">+ ${label}</button>`;
+}
+function delListBtn(list, idx){
+  return `<button class="mini-del" type="button" data-action="del-list" data-list="${list}" data-idx="${idx}" title="ลบข้อนี้">✕</button>`;
+}
+function addListBtn(list, label){
+  return `<button class="add-row-btn" type="button" data-action="add-list" data-list="${list}">+ ${label}</button>`;
+}
+
+/* ---- field-level formatting (bold/italic/underline/color/size/font/align per field) ---- */
+function fmtKeyScalar(path){ return 'scalar:'+path; }
+function fmtKeyList(list, idx){ return 'list:'+list+':'+idx; }
+function fmtKeyArr(arr, id, field){ return 'arr:'+arr+':'+id+':'+field; }
+function fmtKeyAlign(k){ return 'align:'+k; }
+function fmtKeyCur(id, field){ return 'cur:'+id+':'+field; }
+function fmtKeyAppendix(id){ return 'appendix:'+id; }
+function fmtKeyCustom(id, field){ return 'custom:'+id+':'+field; }
+function fmtKeyNote(secKey){ return 'note:'+secKey; }
+
+function fmtToStyle(f){
+  if(!f) return '';
+  let s = '';
+  if(f.bold) s += 'font-weight:700;';
+  if(f.italic) s += 'font-style:italic;';
+  if(f.underline) s += 'text-decoration:underline;';
+  if(f.color) s += `color:${f.color};`;
+  if(f.fontSize) s += `font-size:${f.fontSize}px;`;
+  if(f.fontFamily) s += `font-family:${f.fontFamily};`;
+  if(f.align) s += `text-align:${f.align};`;
+  return s;
+}
+function styleAttr(key){
+  const css = fmtToStyle(S.fmt && S.fmt[key]);
+  return css ? ` style="${css}"` : '';
+}
+
+function secHeadingEditable(id, num, title){
+  return `<div class="sec-ctlrow"><h4 class="sec">${num}. ${escapeHtml(title)}</h4><span class="sec-ctls"><button type="button" class="mini-ctl" data-action="hide-sec" data-sec="${id}" title="ซ่อนหัวข้อนี้">🙈 ซ่อน</button></span></div>`;
+}
+function insertHereBtnHtml(anchor){
+  return `<button type="button" class="insert-here-btn" data-action="add-custom" data-anchor="${anchor}">➕ แทรกหัวข้อใหม่ตรงนี้</button>`;
+}
+function customSectionHtml(c, num){
+  const tkey = fmtKeyCustom(c.id,'title');
+  const bkey = fmtKeyCustom(c.id,'body');
+  const idx = ANCHOR_SEQUENCE.indexOf(c.anchor);
+  const canUp = idx>0, canDown = idx<ANCHOR_SEQUENCE.length-1;
+  return `<div class="custom-sec">
+    <div class="sec-ctlrow">
+      <h4 class="sec"><span class="secnum">${num}.</span> <span class="ed" contenteditable="true" data-custom="${c.id}" data-field="title" data-fmtkey="${tkey}" data-placeholder="ชื่อหัวข้อ..."${styleAttr(tkey)}>${escapeHtml(c.title)}</span></h4>
+      <span class="sec-ctls">
+        <button type="button" class="mini-ctl"${canUp?'':' disabled'} data-action="sec-up" data-cid="${c.id}" title="ย้ายขึ้น">↑</button>
+        <button type="button" class="mini-ctl"${canDown?'':' disabled'} data-action="sec-down" data-cid="${c.id}" title="ย้ายลง">↓</button>
+        <button type="button" class="mini-ctl dup-btn" data-action="dup-sec" data-cid="${c.id}" title="คัดลอกหัวข้อนี้">📋 คัดลอก</button>
+        <button type="button" class="mini-ctl mini-del" data-action="del-custom" data-cid="${c.id}" title="ลบหัวข้อนี้">✕ ลบ</button>
+      </span>
+    </div>
+    <div class="ed ed-block" contenteditable="true" data-custom="${c.id}" data-field="body" data-fmtkey="${bkey}" data-placeholder="พิมพ์เนื้อหาที่นี่..."${styleAttr(bkey)}>${escapeHtml(c.body).replace(/\n/g,'<br>')}</div>
+    ${customTableEditableHtml(c)}
+  </div>`;
+}
+function customTableEditableHtml(c){
+  if(!c.table){
+    return `<button type="button" class="add-row-btn" data-action="add-ctable" data-csec="${c.id}">📊 + เพิ่มตาราง</button>`;
+  }
+  const t = c.table;
+  const tKey = 'custom:'+c.id;
+  let h = `<table class="resizable" data-header-rows="1">${tableColgroup(tKey, t.headers.length, null, true, true)}<tr><th class="ctl">${resetColWidthsBtn(tKey)}</th>`;
+  t.headers.forEach((hd,i)=>{
+    const key = fmtKeyCustom(c.id, 'colhead:'+hd.id);
+    const canDelCol = t.headers.length>1;
+    h += `<th><span class="ed" contenteditable="true" data-csec="${c.id}" data-chid="${hd.id}" data-fmtkey="${key}" data-placeholder="ชื่อคอลัมน์..."${styleAttr(key)}>${escapeHtml(hd.label)}</span>${canDelCol?` <button type="button" class="mini-del" data-action="del-ccol" data-csec="${c.id}" data-chid="${hd.id}" title="ลบคอลัมน์นี้">✕</button>`:''}${resizeHandle(tKey,i,i===t.headers.length-1,true,true)}</th>`;
+  });
+  h += `<th class="ctl"><button type="button" class="mini-ctl" data-action="add-ccol" data-csec="${c.id}" title="เพิ่มคอลัมน์">+col</button></th></tr>`;
+  t.rows.forEach((r,idx)=>{
+    h += `<tr><td class="ctl">
+      <button type="button" class="mini-ctl"${idx===0?' disabled':''} data-action="crow-up" data-csec="${c.id}" data-crow="${r.id}" title="ย้ายขึ้น">↑</button>
+      <button type="button" class="mini-ctl"${idx===t.rows.length-1?' disabled':''} data-action="crow-down" data-csec="${c.id}" data-crow="${r.id}" title="ย้ายลง">↓</button>
+      <button type="button" class="mini-ctl dup-btn" data-action="dup-crow" data-csec="${c.id}" data-crow="${r.id}" title="คัดลอกแถวนี้">📋</button>
+      <button type="button" class="mini-del" data-action="del-crow" data-csec="${c.id}" data-crow="${r.id}" title="ลบแถวนี้">✕</button>
+    </td>`;
+    t.headers.forEach(hd=>{
+      const key = fmtKeyCustom(c.id, 'cell:'+r.id+':'+hd.id);
+      const val = r.cells[hd.id] || '';
+      h += `<td class="ed" contenteditable="true" data-csec="${c.id}" data-crow="${r.id}" data-chid="${hd.id}" data-fmtkey="${key}" data-placeholder="พิมพ์ที่นี่..."${styleAttr(key)}>${escapeHtml(val).replace(/\n/g,'<br>')}</td>`;
+    });
+    h += `<td class="ctl"></td></tr>`;
+  });
+  h += `</table>`;
+  h += `<button type="button" class="add-row-btn" data-action="add-crow" data-csec="${c.id}">+ เพิ่มแถว</button>`;
+  h += ` <button type="button" class="add-row-btn" data-action="del-ctable" data-csec="${c.id}" style="border-color:var(--danger);color:var(--danger);background:#fbeae6;">🗑 ลบตารางนี้</button>`;
+  return h;
+}
+function sectionNoteHtml(secKey){
+  const val = (S.sectionNotes && S.sectionNotes[secKey]) || '';
+  const key = fmtKeyNote(secKey);
+  return `<div class="sec-note ed" contenteditable="true" data-note="${secKey}" data-fmtkey="${key}"${styleAttr(key)} data-placeholder="+ เพิ่มหมายเหตุสำหรับหัวข้อนี้">${escapeHtml(val).replace(/\n/g,'<br>')}</div>`;
+}
+function secTailEditable(anchor, NUM){
+  return sectionNoteHtml(anchor) + renderCustomsAtEditable(anchor, NUM);
+}
+function renderCustomsAtEditable(anchor, NUM){
+  let h = '';
+  S.customSections.filter(c=>c.anchor===anchor).forEach(c=>{ h += customSectionHtml(c, NUM['custom:'+c.id]); });
+  h += insertHereBtnHtml(anchor);
+  return h;
+}
+
+function logoSlotHtml(key, label){
+  const src = S.logos && S.logos[key];
+  if(src){
+    return `<div class="logo-slot filled">
+      <img src="${src}" alt="${escapeHtml(label)}">
+      <button class="mini-del logo-del" type="button" data-action="del-logo" data-logo="${key}" title="ลบโลโก้">✕</button>
+    </div>`;
+  }
+  return `<button class="logo-add" type="button" data-action="add-logo" data-logo="${key}">🖼️ + ${escapeHtml(label)}</button>`;
+}
+
+function fileToResizedDataUrl(file, maxDim){
+  maxDim = maxDim || 300;
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=> reject(reader.error || new Error('read failed'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=> reject(new Error('image decode failed'));
+      img.onload = ()=>{
+        const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * scale));
+        const h = Math.max(1, Math.round(img.naturalHeight * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageDims(dataUrl){
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onload = ()=> resolve({ w: img.naturalWidth||100, h: img.naturalHeight||100 });
+    img.onerror = ()=> resolve({ w:100, h:100 });
+    img.src = dataUrl;
+  });
+}
+
+function edStringList(listName, arr, addLabel){
+  let h = `<ol>`;
+  arr.forEach((val,i)=>{
+    const key = fmtKeyList(listName, i);
+    const upDis = i===0 ? ' disabled' : '';
+    const downDis = i===arr.length-1 ? ' disabled' : '';
+    h += `<li><span class="ed" contenteditable="true" data-list="${listName}" data-idx="${i}" data-fmtkey="${key}" data-placeholder="พิมพ์ที่นี่..."${styleAttr(key)}>${escapeHtml(val)}</span> <button type="button" class="mini-ctl"${upDis} data-action="list-up" data-list="${listName}" data-idx="${i}" title="ย้ายขึ้น">↑</button><button type="button" class="mini-ctl"${downDis} data-action="list-down" data-list="${listName}" data-idx="${i}" title="ย้ายลง">↓</button><button type="button" class="mini-ctl dup-btn" data-action="dup-list" data-list="${listName}" data-idx="${i}" title="คัดลอกข้อนี้">📋</button>${delListBtn(listName,i)}</li>`;
+  });
+  h += `</ol>${addListBtn(listName, addLabel)}`;
+  return h;
+}
+
+function renderEditableHTML(){
+  const g = S.general;
+  let h = '';
+
+  h += `<div class="logo-row">${logoSlotHtml('uni','โลโก้มหาวิทยาลัย')}${logoSlotHtml('faculty','โลโก้คณะ')}</div>`;
+
+  h += `<h3 class="doctitle">
+    <div class="doctitle-label">แผนการสอนรายวิชา</div>
+    <span class="ed doctitle-th" contenteditable="true" data-scalar="general.nameTh" data-fmtkey="${fmtKeyScalar('general.nameTh')}"${styleAttr(fmtKeyScalar('general.nameTh'))} data-placeholder="คลิกเพื่อพิมพ์ชื่อรายวิชา (ภาษาไทย)">${escapeHtml(g.nameTh)}</span>
+    <span class="ed doctitle-en" contenteditable="true" data-scalar="general.nameEn" data-fmtkey="${fmtKeyScalar('general.nameEn')}"${styleAttr(fmtKeyScalar('general.nameEn'))} data-placeholder="คลิกเพื่อเพิ่มชื่อรายวิชา (ภาษาอังกฤษ) — ไม่บังคับ">${escapeHtml(g.nameEn)}</span>
+  </h3>`;
+
+  const NUM = computeSectionNumbers();
+  h += renderCustomsAtEditable('start', NUM);
+
+  // 1. general info
+  if(isSecVisible('general')){
+  h += secHeadingEditable('general', NUM.general, BUILTIN_SECTION_TITLES.general) + `<table>`;
+  const genRows = [
+    ['รหัสรายวิชา','general.code',g.code],
+    ['ชื่อรายวิชา (ภาษาไทย)','general.nameTh',g.nameTh],
+    ['ชื่อรายวิชา (ภาษาอังกฤษ)','general.nameEn',g.nameEn],
+    ['จำนวนหน่วยกิต','general.credits',g.credits],
+    ['หลักสูตร','general.curriculum',g.curriculum],
+    ['ภาคการศึกษา / ปีการศึกษา','general.semester',g.semester],
+    ['กลุ่มเรียน / หมู่เรียน','general.groups',g.groups],
+    ['วัน เวลาเรียน','general.schedule',g.schedule],
+    ['ห้องเรียน / ช่องทางการเรียนออนไลน์','general.rooms',g.rooms],
+    ['อาจารย์ผู้รับผิดชอบรายวิชา','general.coordinators',g.coordinators],
+    ['อาจารย์ผู้สอน','general.instructors',g.instructors],
+    ['ช่องทางการติดต่ออาจารย์','general.contact',g.contact],
+    ['ช่วงเวลาที่นิสิตขอคำปรึกษา','general.consult',g.consult]
+  ];
+  genRows.forEach(([label,path,val])=>{
+    const key = fmtKeyScalar(path);
+    h += `<tr class="genrow"><th>${label}</th><td class="ed" contenteditable="true" data-scalar="${path}" data-fmtkey="${key}" data-placeholder="พิมพ์ที่นี่..."${styleAttr(key)}>${escapeHtml(val).replace(/\n/g,'<br>')}</td></tr>`;
+  });
+  h += `</table>`;
+  } h += secTailEditable('general', NUM);
+
+  // 2. description
+  if(isSecVisible('description')){
+  h += secHeadingEditable('description', NUM.description, BUILTIN_SECTION_TITLES.description) + `<div class="ed ed-block" contenteditable="true" data-scalar="description" data-fmtkey="${fmtKeyScalar('description')}" data-placeholder="พิมพ์คำอธิบายรายวิชาที่นี่..."${styleAttr(fmtKeyScalar('description'))}>${escapeHtml(S.description).replace(/\n/g,'<br>')}</div>`;
+  } h += secTailEditable('description', NUM);
+
+  // 3. objectives
+  if(isSecVisible('objectives')){
+  h += secHeadingEditable('objectives', NUM.objectives, BUILTIN_SECTION_TITLES.objectives) + edStringList('objectives', S.objectives, 'เพิ่มจุดมุ่งหมาย');
+  } h += secTailEditable('objectives', NUM);
+
+  // 4. CLO
+  if(isSecVisible('clo')){
+  h += secHeadingEditable('clo', NUM.clo, BUILTIN_SECTION_TITLES.clo) + `<table class="resizable" data-header-rows="1">${tableColgroup('clos',2,[20,80],true,false)}<tr><th class="ctl">${resetColWidthsBtn('clos')}</th><th>CLO${resizeHandle('clos',0,false,true,false)}</th><th>ผลลัพธ์การเรียนรู้ของรายวิชา${resizeHandle('clos',1,true,true,false)}</th></tr>`;
+  S.clos.forEach((c,idx)=>{
+    h += `<tr>${ctlCell('clos', c.id, idx, S.clos.length)}${edField('clos',c.id,'code',c.code)}${edField('clos',c.id,'text',c.text)}</tr>`;
+  });
+  h += `</table>${addRowBtn('clos','เพิ่ม CLO')}`;
+  } h += secTailEditable('clo', NUM);
+
+  // 5. alignment
+  if(isSecVisible('alignment')){
+  h += secHeadingEditable('alignment', NUM.alignment, BUILTIN_SECTION_TITLES.alignment);
+  h += `<div class="cur-chip-row">`;
+  S.curricula.forEach(cu=>{ h += `<span class="cur-chip">${escapeHtml(cu.name)}<button class="mini-del" type="button" data-action="del-cur" data-id="${cu.id}" title="ลบหลักสูตรนี้">✕</button></span>`; });
+  h += `<button class="add-row-btn" type="button" data-action="add-cur">+ เพิ่มหลักสูตร</button>`;
+  h += `</div>`;
+  if(S.curricula.length){
+    const alignCols = 1 + S.curricula.length;
+    const alignDefault = [Math.round(100/alignCols)].concat(Array(S.curricula.length).fill(0)).map((_,i,a)=> i===0? a[0] : +((100-a[0])/S.curricula.length).toFixed(2));
+    h += `<table class="resizable" data-header-rows="1">${tableColgroup('alignment',alignCols,alignDefault,false,false)}<tr><th>CLO ${resetColWidthsBtn('alignment')}${resizeHandle('alignment',0,false,false,false)}</th>`;
+    S.curricula.forEach((cu,i)=>{ const k=fmtKeyCur(cu.id,'name'); h += `<th class="ed" contenteditable="true" data-cur="${cu.id}" data-field="name" data-fmtkey="${k}" data-placeholder="ชื่อหลักสูตร..."${styleAttr(k)}>${escapeHtml(cu.name)}${resizeHandle('alignment',i+1,i===S.curricula.length-1,false,false)}</th>`; });
+    h += `</tr>`;
+    S.clos.forEach(clo=>{
+      h += `<tr><td data-derived="clo-label" data-clo-id="${clo.id}">${escapeHtml(clo.code)} ${escapeHtml(clo.text)}</td>`;
+      S.curricula.forEach(cu=>{ const k=fmtKeyAlign(clo.id+'|'+cu.id); h += `<td class="ed" contenteditable="true" data-align="${clo.id}|${cu.id}" data-fmtkey="${k}" data-placeholder="พิมพ์ที่นี่..."${styleAttr(k)}>${escapeHtml(S.alignment[clo.id+'|'+cu.id]||'').replace(/\n/g,'<br>')}</td>`; });
+      h += `</tr>`;
+    });
+    h += `</table>`;
+  } else {
+    h += `<p class="muted">เพิ่มหลักสูตรอย่างน้อย 1 รายการเพื่อแสดงตารางนี้</p>`;
+  }
+  } h += secTailEditable('alignment', NUM);
+
+  // 6. teaching methods
+  if(isSecVisible('methods')){
+  h += secHeadingEditable('methods', NUM.methods, BUILTIN_SECTION_TITLES.methods) + `<table class="resizable" data-header-rows="1">${tableColgroup('teachingMethods',2,[35,65],true,false)}<tr><th class="ctl">${resetColWidthsBtn('teachingMethods')}</th><th>รูปแบบการเรียนรู้${resizeHandle('teachingMethods',0,false,true,false)}</th><th>รายละเอียด${resizeHandle('teachingMethods',1,true,true,false)}</th></tr>`;
+  S.teachingMethods.forEach((m,idx)=>{
+    h += `<tr>${ctlCell('teachingMethods', m.id, idx, S.teachingMethods.length)}${edField('teachingMethods',m.id,'name',m.name)}${edField('teachingMethods',m.id,'detail',m.detail)}</tr>`;
+  });
+  h += `</table>${addRowBtn('teachingMethods','เพิ่มรูปแบบการสอน')}`;
+  } h += secTailEditable('methods', NUM);
+
+  // 7. weekly plan
+  if(isSecVisible('weeks')){
+  h += secHeadingEditable('weeks', NUM.weeks, BUILTIN_SECTION_TITLES.weeks) + `<table class="resizable" data-header-rows="1">${tableColgroup('weeks',7,[9,13,20,17,17,14,10],true,false)}<tr><th class="ctl">${resetColWidthsBtn('weeks')}</th><th class="num">สัปดาห์${resizeHandle('weeks',0,false,true,false)}</th><th>วัน/เวลา${resizeHandle('weeks',1,false,true,false)}</th><th>หัวข้อการเรียนรู้${resizeHandle('weeks',2,false,true,false)}</th><th>ผลลัพธ์การเรียนรู้ (LLO)${resizeHandle('weeks',3,false,true,false)}</th><th>กิจกรรมการเรียนรู้ (TLA)${resizeHandle('weeks',4,false,true,false)}</th><th>การประเมินผล${resizeHandle('weeks',5,false,true,false)}</th><th>อาจารย์ผู้สอน${resizeHandle('weeks',6,true,true,false)}</th></tr>`;
+  S.weeks.forEach((w,idx)=>{
+    h += `<tr>${ctlCell('weeks', w.id, idx, S.weeks.length)}${edField('weeks',w.id,'no',w.no)}${edField('weeks',w.id,'datetime',w.datetime)}${edField('weeks',w.id,'topic',w.topic)}${edField('weeks',w.id,'llo',w.llo)}${edField('weeks',w.id,'tla',w.tla)}${edField('weeks',w.id,'assessment',w.assessment)}${edField('weeks',w.id,'instructor',w.instructor)}</tr>`;
+  });
+  h += `</table>${addRowBtn('weeks','เพิ่มสัปดาห์')}`;
+  } h += secTailEditable('weeks', NUM);
+
+  // 8. assessment
+  if(isSecVisible('assessment')){
+  h += secHeadingEditable('assessment', NUM.assessment, BUILTIN_SECTION_TITLES.assessment) + `<table class="resizable" data-header-rows="1">${tableColgroup('assessmentItems',4,[38,12,17,33],true,false)}<tr><th class="ctl">${resetColWidthsBtn('assessmentItems')}</th><th>รายการประเมิน${resizeHandle('assessmentItems',0,false,true,false)}</th><th class="num">คะแนน${resizeHandle('assessmentItems',1,false,true,false)}</th><th>CLO ที่ประเมิน${resizeHandle('assessmentItems',2,false,true,false)}</th><th>ช่วงเวลาประเมิน${resizeHandle('assessmentItems',3,true,true,false)}</th></tr>`;
+  S.assessmentItems.forEach((a,idx)=>{
+    h += `<tr>${ctlCell('assessmentItems', a.id, idx, S.assessmentItems.length)}${edField('assessmentItems',a.id,'item',a.item)}${edField('assessmentItems',a.id,'score',a.score)}${edField('assessmentItems',a.id,'clo',a.clo)}${edField('assessmentItems',a.id,'timing',a.timing)}</tr>`;
+  });
+  h += `<tr class="total-row"><td class="ctl"></td><td>รวม</td><td class="num" data-derived="total-score">${totalScore()}</td><td></td><td></td></tr>`;
+  h += `</table>${addRowBtn('assessmentItems','เพิ่มรายการประเมิน')}`;
+  } h += secTailEditable('assessment', NUM);
+
+  // 9. quality levels
+  if(isSecVisible('quality')){
+  h += secHeadingEditable('quality', NUM.quality, BUILTIN_SECTION_TITLES.quality) + `<table class="resizable" data-header-rows="1">${tableColgroup('qualityLevels',2,[25,75],true,false)}<tr><th class="ctl">${resetColWidthsBtn('qualityLevels')}</th><th>ระดับคุณภาพ${resizeHandle('qualityLevels',0,false,true,false)}</th><th>ลักษณะผลงานที่คาดหวัง${resizeHandle('qualityLevels',1,true,true,false)}</th></tr>`;
+  S.qualityLevels.forEach((q,idx)=>{
+    h += `<tr>${ctlCell('qualityLevels', q.id, idx, S.qualityLevels.length)}${edField('qualityLevels',q.id,'level',q.level)}${edField('qualityLevels',q.id,'desc',q.desc)}</tr>`;
+  });
+  h += `</table>${addRowBtn('qualityLevels','เพิ่มระดับคุณภาพ')}`;
+  } h += secTailEditable('quality', NUM);
+
+  // 10. grade cutoffs
+  if(isSecVisible('grades')){
+  h += secHeadingEditable('grades', NUM.grades, BUILTIN_SECTION_TITLES.grades) + `<table class="resizable" data-header-rows="1">${tableColgroup('gradeCutoffs',2,[50,50],true,false)}<tr><th class="ctl">${resetColWidthsBtn('gradeCutoffs')}</th><th class="num">ช่วงคะแนน${resizeHandle('gradeCutoffs',0,false,true,false)}</th><th class="num">ระดับคะแนน${resizeHandle('gradeCutoffs',1,true,true,false)}</th></tr>`;
+  S.gradeCutoffs.forEach((gc,idx)=>{
+    h += `<tr>${ctlCell('gradeCutoffs', gc.id, idx, S.gradeCutoffs.length)}${edField('gradeCutoffs',gc.id,'range',gc.range)}${edField('gradeCutoffs',gc.id,'grade',gc.grade)}</tr>`;
+  });
+  h += `</table>${addRowBtn('gradeCutoffs','เพิ่มช่วงคะแนน')}`;
+  } h += secTailEditable('grades', NUM);
+
+  // 11. resources
+  if(isSecVisible('resources')){
+  h += secHeadingEditable('resources', NUM.resources, BUILTIN_SECTION_TITLES.resources);
+  h += `<p style="margin-bottom:4px;"><b>เอกสารหลัก</b></p>` + edStringList('res-main', S.resources.main, 'เพิ่มเอกสารหลัก');
+  h += `<p style="margin-bottom:4px;"><b>เอกสารประกอบการเรียนรู้</b></p>` + edStringList('res-supp', S.resources.supplementary, 'เพิ่มเอกสารประกอบ');
+  h += `<p style="margin-bottom:4px;"><b>แหล่งเรียนรู้อื่น ๆ</b></p>` + edStringList('res-other', S.resources.other, 'เพิ่มแหล่งเรียนรู้');
+  } h += secTailEditable('resources', NUM);
+
+  // 12. feedback
+  if(isSecVisible('feedback')){
+  h += secHeadingEditable('feedback', NUM.feedback, BUILTIN_SECTION_TITLES.feedback) + `<table class="resizable" data-header-rows="1">${tableColgroup('feedback',2,[40,60],true,false)}<tr><th class="ctl">${resetColWidthsBtn('feedback')}</th><th>รูปแบบการให้ข้อมูลป้อนกลับ${resizeHandle('feedback',0,false,true,false)}</th><th>ช่วงเวลา / วิธีดำเนินการ${resizeHandle('feedback',1,true,true,false)}</th></tr>`;
+  S.feedback.forEach((f,idx)=>{
+    h += `<tr>${ctlCell('feedback', f.id, idx, S.feedback.length)}${edField('feedback',f.id,'method',f.method)}${edField('feedback',f.id,'timing',f.timing)}</tr>`;
+  });
+  h += `</table>${addRowBtn('feedback','เพิ่มรายการป้อนกลับ')}`;
+  } h += secTailEditable('feedback', NUM);
+
+  // 13. agreements
+  if(isSecVisible('agreements')){
+  h += secHeadingEditable('agreements', NUM.agreements, BUILTIN_SECTION_TITLES.agreements) + edStringList('agreements', S.agreements, 'เพิ่มข้อตกลง');
+  } h += secTailEditable('agreements', NUM);
+
+  // 14. message
+  if(isSecVisible('message')){
+  h += secHeadingEditable('message', NUM.message, BUILTIN_SECTION_TITLES.message) + `<div class="ed ed-block" contenteditable="true" data-scalar="message" data-fmtkey="${fmtKeyScalar('message')}" data-placeholder="พิมพ์ข้อความถึงนิสิตที่นี่..."${styleAttr(fmtKeyScalar('message'))}>${escapeHtml(S.message).replace(/\n/g,'<br>')}</div>`;
+  } h += secTailEditable('message', NUM);
+
+  // appendix
+  h += `<h4 class="sec">ภาคผนวก: แนวทางการคำนวณผลสัมฤทธิ์ CLO</h4><table data-header-rows="1"><tr><th>CLO</th><th>แหล่งคะแนนที่ใช้คำนวณ</th><th>วิธีคำนวณ</th></tr>`;
+  S.clos.forEach(c=>{
+    const noteVal = S.appendixNotes[c.id] || '';
+    const apk = fmtKeyAppendix(c.id);
+    h += `<tr><td data-derived="clo-code" data-clo-id="${c.id}">${escapeHtml(c.code)}</td><td class="ed" contenteditable="true" data-appendix="${c.id}" data-fmtkey="${apk}" data-placeholder="พิมพ์ที่นี่..."${styleAttr(apk)}>${escapeHtml(noteVal).replace(/\n/g,'<br>')}</td><td data-derived="formula" data-clo-id="${c.id}">คะแนนที่ map กับ ${escapeHtml(c.code)} ÷ คะแนนเต็มของ ${escapeHtml(c.code)} × 100</td></tr>`;
+  });
+  h += `</table>`;
+  h += `<table data-header-rows="1"><tr><th>ระดับผลสัมฤทธิ์</th><th class="num">ช่วงคะแนน</th></tr>
+    <tr><td>บรรลุระดับสูง</td><td class="num">≥ 80%</td></tr>
+    <tr><td>บรรลุระดับปานกลาง</td><td class="num">70–79%</td></tr>
+    <tr><td>ควรพัฒนา</td><td class="num">&lt; 70%</td></tr></table>`;
+
+  return h;
+}
+
+function duplicateArrItem(arrName, id){
+  const arr = S[arrName];
+  if(!arr) return;
+  const idx = arr.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const orig = arr[idx];
+  const copy = JSON.parse(JSON.stringify(orig));
+  copy.id = uid();
+  Object.keys(orig).forEach(field=>{
+    if(field==='id') return;
+    const oldKey = fmtKeyArr(arrName, orig.id, field);
+    if(S.fmt[oldKey]) S.fmt[fmtKeyArr(arrName, copy.id, field)] = JSON.parse(JSON.stringify(S.fmt[oldKey]));
+  });
+  arr.splice(idx+1, 0, copy);
+}
+function duplicateListItem(listName, idx){
+  const arr = getListArray(listName);
+  if(!arr) return;
+  arr.splice(idx+1, 0, arr[idx]);
+}
+function duplicateCustomTableRow(secId, rowId){
+  const c = S.customSections.find(x=>x.id===secId);
+  if(!c || !c.table) return;
+  const idx = c.table.rows.findIndex(r=>r.id===rowId);
+  if(idx<0) return;
+  const orig = c.table.rows[idx];
+  const newId = uid();
+  const newCells = {};
+  Object.keys(orig.cells).forEach(hid=>{
+    newCells[hid] = orig.cells[hid];
+    const oldKey = fmtKeyCustom(secId, 'cell:'+orig.id+':'+hid);
+    if(S.fmt[oldKey]) S.fmt[fmtKeyCustom(secId,'cell:'+newId+':'+hid)] = JSON.parse(JSON.stringify(S.fmt[oldKey]));
+  });
+  c.table.rows.splice(idx+1, 0, {id:newId, cells:newCells});
+}
+function duplicateCustomSection(id){
+  const c = S.customSections.find(x=>x.id===id);
+  if(!c) return;
+  const idx = S.customSections.indexOf(c);
+  const copy = JSON.parse(JSON.stringify(c));
+  const oldId = copy.id;
+  const newId = uid();
+  copy.id = newId;
+  ['title','body'].forEach(f=>{
+    const oldKey = fmtKeyCustom(oldId, f);
+    if(S.fmt[oldKey]) S.fmt[fmtKeyCustom(newId, f)] = JSON.parse(JSON.stringify(S.fmt[oldKey]));
+  });
+  if(copy.table){
+    const headerIdMap = {};
+    copy.table.headers.forEach(h=>{
+      const newHid = uid();
+      const oldKey = fmtKeyCustom(oldId, 'colhead:'+h.id);
+      if(S.fmt[oldKey]) S.fmt[fmtKeyCustom(newId,'colhead:'+newHid)] = JSON.parse(JSON.stringify(S.fmt[oldKey]));
+      headerIdMap[h.id] = newHid;
+      h.id = newHid;
+    });
+    copy.table.rows.forEach(r=>{
+      const newRid = uid();
+      const newCells = {};
+      Object.keys(r.cells).forEach(oldHid=>{
+        const newHid = headerIdMap[oldHid] || oldHid;
+        newCells[newHid] = r.cells[oldHid];
+        const oldKey = fmtKeyCustom(oldId, 'cell:'+r.id+':'+oldHid);
+        if(S.fmt[oldKey]) S.fmt[fmtKeyCustom(newId,'cell:'+newRid+':'+newHid)] = JSON.parse(JSON.stringify(S.fmt[oldKey]));
+      });
+      r.id = newRid;
+      r.cells = newCells;
+    });
+    if(S.colWidths && S.colWidths['custom:'+oldId]) S.colWidths['custom:'+newId] = S.colWidths['custom:'+oldId].slice();
+  }
+  S.customSections.splice(idx+1, 0, copy);
+  return copy;
+}
+
+/* ---- column width resize (percentage weights per table, dragged live) ---- */
+function tableColgroup(tableKey, dataColCount, defaultWidths, ctlBefore, ctlAfter){
+  let widths = S.colWidths && S.colWidths[tableKey];
+  if(!widths || widths.length !== dataColCount){
+    widths = defaultWidths && defaultWidths.length===dataColCount ? defaultWidths.slice() : Array(dataColCount).fill(+(100/dataColCount).toFixed(2));
+  }
+  let h = '<colgroup>';
+  if(ctlBefore) h += `<col style="width:44px">`;
+  widths.forEach(w=> h += `<col style="width:${w}%">`);
+  if(ctlAfter) h += `<col style="width:40px">`;
+  h += '</colgroup>';
+  return h;
+}
+function resetColWidthsBtn(tableKey){
+  const has = S.colWidths && S.colWidths[tableKey];
+  return `<button type="button" class="mini-ctl reset-col"${has?'':' disabled'} data-action="reset-colwidths" data-table="${tableKey}" title="รีเซ็ตความกว้างคอลัมน์เป็นอัตโนมัติ">↺</button>`;
+}
+function resizeHandle(tableKey, dataColIdx, isLast, ctlBefore, ctlAfter){
+  if(isLast) return '';
+  const absIdx = dataColIdx + (ctlBefore?1:0);
+  return `<span class="col-resize" data-table="${tableKey}" data-col="${absIdx}" data-ctl-before="${ctlBefore?1:0}" data-ctl-after="${ctlAfter?1:0}"></span>`;
+}
+
+function moveArrItem(arrName, id, dir){
+  const arr = S[arrName];
+  if(!arr) return;
+  const idx = arr.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const j = idx+dir;
+  if(j<0 || j>=arr.length) return;
+  const tmp = arr[idx]; arr[idx]=arr[j]; arr[j]=tmp;
+}
+function moveListItem(listName, idx, dir){
+  const arr = getListArray(listName);
+  if(!arr) return;
+  const j = idx+dir;
+  if(j<0 || j>=arr.length) return;
+  const tmp = arr[idx]; arr[idx]=arr[j]; arr[j]=tmp;
+}
+
+function addRowFactory(name){
+  const factories = {
+    clos: ()=>({id:uid(), code:'CLO'+(S.clos.length+1), text:''}),
+    teachingMethods: ()=>({id:uid(), name:'', detail:''}),
+    weeks: ()=>({id:uid(), no:String(S.weeks.length+1), datetime:'', topic:'', llo:'', tla:'', assessment:'', instructor:''}),
+    assessmentItems: ()=>({id:uid(), item:'', score:'', clo:'', timing:''}),
+    qualityLevels: ()=>({id:uid(), level:'', desc:''}),
+    gradeCutoffs: ()=>({id:uid(), range:'', grade:''}),
+    feedback: ()=>({id:uid(), method:'', timing:''})
+  };
+  if(factories[name]) S[name].push(factories[name]());
+}
+
+function cleanupOrphans(){
+  const validClo = new Set(S.clos.map(c=>c.id));
+  const validCur = new Set(S.curricula.map(c=>c.id));
+  Object.keys(S.alignment).forEach(k=>{
+    const [cloId, curId] = k.split('|');
+    if(!validClo.has(cloId) || !validCur.has(curId)) delete S.alignment[k];
+  });
+  Object.keys(S.appendixNotes).forEach(k=>{ if(!validClo.has(k)) delete S.appendixNotes[k]; });
+}
+
+function getPath(obj, path){
+  return path.split('.').reduce((o,k)=> (o==null? o : o[k]), obj);
+}
+function syncScalarMirrors(path, exceptEl){
+  document.querySelectorAll('[data-scalar="'+path+'"]').forEach(el=>{
+    if(el === exceptEl) return;
+    const val = getPath(S, path);
+    el.innerHTML = escapeHtml(val).replace(/\n/g,'<br>');
+  });
+}
+
+function updateDerived(){
+  document.querySelectorAll('[data-derived="clo-label"]').forEach(el=>{
+    const clo = S.clos.find(c=>c.id===el.dataset.cloId);
+    if(clo) el.textContent = (clo.code||'') + ' ' + (clo.text||'');
+  });
+  document.querySelectorAll('[data-derived="clo-code"]').forEach(el=>{
+    const clo = S.clos.find(c=>c.id===el.dataset.cloId);
+    if(clo) el.textContent = clo.code||'';
+  });
+  document.querySelectorAll('[data-derived="formula"]').forEach(el=>{
+    const clo = S.clos.find(c=>c.id===el.dataset.cloId);
+    if(clo) el.textContent = `คะแนนที่ map กับ ${clo.code} ÷ คะแนนเต็มของ ${clo.code} × 100`;
+  });
+  const totalEl = document.querySelector('[data-derived="total-score"]');
+  if(totalEl) totalEl.textContent = String(totalScore());
+}
+
+let lastFocusedField = null;
+
+function wireEditableHandlers(root){
+  if(root._wired) return;
+  root._wired = true;
+
+  root.addEventListener('focusin', (e)=>{
+    const el = e.target;
+    if(el instanceof HTMLElement && el.dataset.fmtkey){
+      lastFocusedField = el;
+      updateToolbarState();
+    }
+  });
+
+  root.addEventListener('paste', (e)=>{
+    const el = e.target;
+    if(!(el instanceof HTMLElement) || !el.isContentEditable) return;
+    e.preventDefault();
+    const cd = e.clipboardData || window.clipboardData;
+    const text = cd ? cd.getData('text/plain') : '';
+    if(!text) return;
+    let inserted = false;
+    try{
+      if(document.queryCommandSupported && document.queryCommandSupported('insertText')){
+        inserted = document.execCommand('insertText', false, text);
+      }
+    }catch(err){ inserted = false; }
+    if(!inserted){
+      const sel = window.getSelection();
+      if(sel && sel.rangeCount > 0){
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const node = document.createTextNode(text);
+        range.insertNode(node);
+        range.setStartAfter(node);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+    el.dispatchEvent(new Event('input', { bubbles:true }));
+  });
+
+  root.addEventListener('input', (e)=>{
+    const el = e.target;
+    if(!(el instanceof HTMLElement) || !el.isContentEditable) return;
+    const text = el.innerText.replace(/\n+$/,'');
+    if(el.dataset.scalar){
+      setPath(S, el.dataset.scalar, text);
+      syncScalarMirrors(el.dataset.scalar, el);
+    } else if(el.dataset.list !== undefined && el.dataset.idx !== undefined){
+      const arr = getListArray(el.dataset.list);
+      const idx = parseInt(el.dataset.idx,10);
+      if(arr && arr[idx] !== undefined) arr[idx] = text;
+    } else if(el.dataset.arr && el.dataset.field){
+      const item = (S[el.dataset.arr]||[]).find(x=>x.id===el.dataset.id);
+      if(item) item[el.dataset.field] = text;
+    } else if(el.dataset.align){
+      S.alignment[el.dataset.align] = text;
+    } else if(el.dataset.cur && el.dataset.field){
+      const cu = S.curricula.find(x=>x.id===el.dataset.cur);
+      if(cu) cu[el.dataset.field] = text;
+    } else if(el.dataset.appendix){
+      S.appendixNotes[el.dataset.appendix] = text;
+    } else if(el.dataset.custom && el.dataset.field){
+      const c = S.customSections.find(x=>x.id===el.dataset.custom);
+      if(c) c[el.dataset.field] = text;
+    } else if(el.dataset.note){
+      if(!S.sectionNotes) S.sectionNotes = {};
+      S.sectionNotes[el.dataset.note] = text;
+    } else if(el.dataset.csec && el.dataset.chid && el.dataset.crow){
+      const c = S.customSections.find(x=>x.id===el.dataset.csec);
+      if(c && c.table){
+        const r = c.table.rows.find(x=>x.id===el.dataset.crow);
+        if(r) r.cells[el.dataset.chid] = text;
+      }
+    } else if(el.dataset.csec && el.dataset.chid){
+      const c = S.customSections.find(x=>x.id===el.dataset.csec);
+      if(c && c.table){
+        const hd = c.table.headers.find(x=>x.id===el.dataset.chid);
+        if(hd) hd.label = text;
+      }
+    } else {
+      return;
+    }
+    updateDerived();
+    saveCurrent();
+  }, true);
+
+  root.addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-action]');
+    if(!btn) return;
+    e.preventDefault();
+    const action = btn.dataset.action;
+    if(action==='del-list'){
+      const arr = getListArray(btn.dataset.list);
+      if(arr) arr.splice(parseInt(btn.dataset.idx,10),1);
+    } else if(action==='add-list'){
+      const arr = getListArray(btn.dataset.list);
+      if(arr) arr.push('');
+    } else if(action==='del-row'){
+      const arr = S[btn.dataset.arr];
+      const idx = arr.findIndex(x=>x.id===btn.dataset.id);
+      if(idx>=0) arr.splice(idx,1);
+      cleanupOrphans();
+    } else if(action==='add-row'){
+      addRowFactory(btn.dataset.arr);
+    } else if(action==='del-cur'){
+      const idx = S.curricula.findIndex(x=>x.id===btn.dataset.id);
+      if(idx>=0) S.curricula.splice(idx,1);
+      cleanupOrphans();
+    } else if(action==='add-cur'){
+      S.curricula.push({id:uid(), name:'หลักสูตรใหม่'});
+    } else if(action==='add-logo'){
+      pendingLogoTarget = btn.dataset.logo;
+      const input = document.getElementById('logoFileInput');
+      if(input) input.click();
+      return; // wait for the file picker; nothing to save/rebuild yet
+    } else if(action==='del-logo'){
+      if(S.logos) S.logos[btn.dataset.logo] = null;
+    } else if(action==='hide-sec'){
+      if(!S.sectionMeta[btn.dataset.sec]) S.sectionMeta[btn.dataset.sec] = {};
+      S.sectionMeta[btn.dataset.sec].visible = false;
+    } else if(action==='sec-up'){
+      moveCustomSection(btn.dataset.cid, -1);
+    } else if(action==='sec-down'){
+      moveCustomSection(btn.dataset.cid, 1);
+    } else if(action==='del-custom'){
+      const idx = S.customSections.findIndex(x=>x.id===btn.dataset.cid);
+      if(idx>=0) S.customSections.splice(idx,1);
+    } else if(action==='add-custom'){
+      addCustomSection(btn.dataset.anchor);
+    } else if(action==='row-up'){
+      moveArrItem(btn.dataset.arr, btn.dataset.id, -1);
+    } else if(action==='row-down'){
+      moveArrItem(btn.dataset.arr, btn.dataset.id, 1);
+    } else if(action==='list-up'){
+      moveListItem(btn.dataset.list, parseInt(btn.dataset.idx,10), -1);
+    } else if(action==='list-down'){
+      moveListItem(btn.dataset.list, parseInt(btn.dataset.idx,10), 1);
+    } else if(action==='add-ctable'){
+      addCustomTable(btn.dataset.csec);
+    } else if(action==='del-ctable'){
+      removeCustomTable(btn.dataset.csec);
+    } else if(action==='add-ccol'){
+      addCustomTableColumn(btn.dataset.csec);
+    } else if(action==='del-ccol'){
+      removeCustomTableColumn(btn.dataset.csec, btn.dataset.chid);
+    } else if(action==='add-crow'){
+      addCustomTableRow(btn.dataset.csec);
+    } else if(action==='del-crow'){
+      removeCustomTableRow(btn.dataset.csec, btn.dataset.crow);
+    } else if(action==='crow-up'){
+      moveCustomTableRow(btn.dataset.csec, btn.dataset.crow, -1);
+    } else if(action==='crow-down'){
+      moveCustomTableRow(btn.dataset.csec, btn.dataset.crow, 1);
+    } else if(action==='dup-row'){
+      duplicateArrItem(btn.dataset.arr, btn.dataset.id);
+    } else if(action==='dup-list'){
+      duplicateListItem(btn.dataset.list, parseInt(btn.dataset.idx,10));
+    } else if(action==='dup-sec'){
+      duplicateCustomSection(btn.dataset.cid);
+    } else if(action==='dup-crow'){
+      duplicateCustomTableRow(btn.dataset.csec, btn.dataset.crow);
+    } else if(action==='reset-colwidths'){
+      if(S.colWidths) delete S.colWidths[btn.dataset.table];
+    } else {
+      return;
+    }
+    saveCurrent();
+    buildEditableDocument();
+  });
+}
+
+let pendingLogoTarget = null;
+
+/* ============================= FORMATTING TOOLBAR ============================= */
+function applyFmtToEl(el, key){
+  const css = fmtToStyle(S.fmt[key]);
+  if(css) el.setAttribute('style', css); else el.removeAttribute('style');
+}
+function toggleFmt(prop){
+  if(!lastFocusedField){ showToast('คลิกข้อความในเอกสารก่อน แล้วค่อยจัดรูปแบบ'); return; }
+  const key = lastFocusedField.dataset.fmtkey;
+  if(!S.fmt[key]) S.fmt[key] = {};
+  S.fmt[key][prop] = !S.fmt[key][prop];
+  if(!S.fmt[key][prop]) delete S.fmt[key][prop];
+  applyFmtToEl(lastFocusedField, key);
+  saveCurrent();
+  updateToolbarState();
+}
+function setFmt(prop, value){
+  if(!lastFocusedField){ showToast('คลิกข้อความในเอกสารก่อน แล้วค่อยจัดรูปแบบ'); return; }
+  const key = lastFocusedField.dataset.fmtkey;
+  if(!S.fmt[key]) S.fmt[key] = {};
+  if(value === '' || value === null){ delete S.fmt[key][prop]; } else { S.fmt[key][prop] = value; }
+  applyFmtToEl(lastFocusedField, key);
+  saveCurrent();
+  updateToolbarState();
+}
+function clearFmt(){
+  if(!lastFocusedField) return;
+  const key = lastFocusedField.dataset.fmtkey;
+  delete S.fmt[key];
+  lastFocusedField.removeAttribute('style');
+  saveCurrent();
+  updateToolbarState();
+}
+function updateToolbarState(){
+  const f = (lastFocusedField && S.fmt[lastFocusedField.dataset.fmtkey]) || {};
+  document.querySelectorAll('.fbtn[data-fmt]').forEach(b=>{ b.classList.toggle('active', !!f[b.dataset.fmt]); });
+  document.querySelectorAll('.fbtn[data-align]').forEach(b=>{ b.classList.toggle('active', f.align===b.dataset.align); });
+  const fFont = document.getElementById('fFont'); if(fFont) fFont.value = f.fontFamily || '';
+  const fSize = document.getElementById('fSize'); if(fSize) fSize.value = f.fontSize || '';
+  const fColor = document.getElementById('fColor'); if(fColor) fColor.value = f.color || '#12332a';
+  const hint = document.getElementById('fHint');
+  if(hint) hint.textContent = lastFocusedField ? '' : 'คลิกข้อความในเอกสารก่อน แล้วค่อยจัดรูปแบบ';
+}
+
+document.querySelectorAll('.fbtn[data-fmt]').forEach(b=> b.addEventListener('click', ()=> toggleFmt(b.dataset.fmt)));
+document.querySelectorAll('.fbtn[data-align]').forEach(b=> b.addEventListener('click', ()=>{
+  if(!lastFocusedField){ showToast('คลิกข้อความในเอกสารก่อน แล้วค่อยจัดรูปแบบ'); return; }
+  const key = lastFocusedField.dataset.fmtkey;
+  const current = (S.fmt[key]||{}).align;
+  setFmt('align', current===b.dataset.align? '' : b.dataset.align);
+}));
+document.getElementById('fFont').addEventListener('change', (e)=> setFmt('fontFamily', e.target.value));
+document.getElementById('fSize').addEventListener('change', (e)=> setFmt('fontSize', e.target.value? parseInt(e.target.value,10): ''));
+document.getElementById('fColor').addEventListener('input', (e)=> setFmt('color', e.target.value));
+document.getElementById('fClear').addEventListener('click', clearFmt);
+
+/* ============================= ZOOM (into the page itself) ============================= */
+let zoomLevel = parseInt(localStorage.getItem('syllabus_zoom_v1')||'100', 10);
+function applyZoom(){
+  const paper = document.getElementById('paper');
+  const wrap = document.getElementById('paperZoomWrap');
+  const factor = zoomLevel/100;
+  if(paper){
+    paper.style.transform = zoomLevel===100 ? '' : `scale(${factor})`;
+  }
+  if(paper && wrap){
+    // transform doesn't affect layout size, so reserve the actual visual height ourselves —
+    // otherwise a page zoomed in beyond 100% would visually spill past where the page thinks
+    // the document ends, and scrolling would stop short of the real bottom of the page.
+    requestAnimationFrame(()=>{
+      const h = paper.getBoundingClientRect().height;
+      wrap.style.height = h + 'px';
+      syncHeaderOffset();
+    });
+  }
+  const lvl = document.getElementById('zLevel'); if(lvl) lvl.textContent = zoomLevel + '%';
+  try{ localStorage.setItem('syllabus_zoom_v1', String(zoomLevel)); }catch(e){}
+}
+document.getElementById('zIn').addEventListener('click', ()=>{ zoomLevel = Math.min(200, zoomLevel+10); applyZoom(); });
+document.getElementById('zOut').addEventListener('click', ()=>{ zoomLevel = Math.max(50, zoomLevel-10); applyZoom(); });
+document.getElementById('zReset').addEventListener('click', ()=>{ zoomLevel = 100; applyZoom(); });
+
+function renderHiddenStrip(){
+  const strip = document.getElementById('hiddenStrip');
+  if(!strip) return;
+  const hidden = Object.keys(BUILTIN_SECTION_TITLES).filter(id=> !isSecVisible(id));
+  if(hidden.length === 0){ strip.innerHTML = ''; return; }
+  strip.innerHTML = '👁️‍🗨️ ซ่อนอยู่: ' + hidden.map(id=>
+    `<span class="chip">${escapeHtml(BUILTIN_SECTION_TITLES[id])}<button type="button" data-action="show-sec" data-sec="${id}" title="แสดงหัวข้อนี้อีกครั้ง">+</button></span>`
+  ).join('');
+}
+
+function buildEditableDocument(){
+  const paper = document.getElementById('paper');
+  paper.innerHTML = renderEditableHTML();
+  wireEditableHandlers(paper);
+  renderHiddenStrip();
+  updateDerived();
+  if(typeof applyZoom === 'function') applyZoom();
+}
+
+
+/* ============================= EXPORT / IMPORT: JSON ============================= */
+async function exportJson(){
+  const filename = (S.general.code||'syllabus')+'_'+(S.general.nameTh||'course').replace(/[^\wก-๙\-]+/g,'_')+'.json';
+  const handle = await pickSaveHandle(filename);
+  if(handle === 'CANCELLED') return;
+  const data = JSON.stringify(S, null, 2);
+  const blob = new Blob([data], { type:'application/json' });
+  await saveBlob(blob, filename, handle);
+}
+function importJsonFile(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=> reject(reader.error || new Error('read failed'));
+    reader.onload = ()=>{
+      try{
+        const data = JSON.parse(reader.result);
+        if(!data || typeof data !== 'object' || !data.general) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
+        resolve(data);
+      }catch(err){ reject(err); }
+    };
+    reader.readAsText(file);
+  });
+}
+
+/* ============================= EXPORT: HTML ============================= */
+async function exportHtml(){
+  const filename = (S.general.code||'syllabus')+'_'+(S.general.nameTh||'course').replace(/[^\wก-๙\-]+/g,'_')+'.html';
+  const handle = await pickSaveHandle(filename);
+  if(handle === 'CANCELLED') return;
+  const title = S.general.nameTh || S.title || 'แผนการสอนรายวิชา';
+  const bodyHtml = buildPreviewHTML();
+  const css = `
+    :root{ color-scheme: light; }
+    *{ box-sizing:border-box; }
+    body{ font-family:'Bai Jamjuree',sans-serif; background:#f3efe3; color:#17231b; margin:0; padding:32px 14px 60px; }
+    .paper{ max-width:820px; margin:0 auto; background:#fff; padding:46px 42px 56px; border:1px solid #e4ddc9; border-radius:3px; font-size:13.5px; line-height:1.65; box-shadow:0 1px 3px rgba(0,0,0,.08), 0 8px 26px rgba(0,0,0,.06); }
+    .paper .logo-row-static{ display:flex; justify-content:center; align-items:center; gap:28px; margin-bottom:14px; }
+    .paper .logo-row-static img{ height:64px; max-width:180px; object-fit:contain; }
+    .paper .sec-note-static{ font-size:12px; font-style:italic; color:#8b8368; margin:6px 0 14px; padding:6px 10px; border-left:3px solid #e4ddc9; background:#faf7ee; border-radius:0 6px 6px 0; }
+    .paper h3.doctitle{ text-align:center; font-family:'Bai Jamjuree',sans-serif; font-weight:600; font-size:19px; color:#12332a; margin:0 0 20px; }
+    .paper h4.sec{ font-family:'Bai Jamjuree',sans-serif; font-weight:600; font-size:14.5px; color:#12332a; margin:22px 0 8px; padding-bottom:4px; border-bottom:2px solid #b6902f; }
+    .paper h4.sec:first-of-type{ margin-top:0; }
+    .paper p{ margin:0 0 8px; white-space:pre-wrap; }
+    .paper table{ width:100%; border-collapse:collapse; margin-bottom:6px; font-size:12.5px; }
+    .paper table th, .paper table td{ border:1px solid #cfcab5; padding:6px 8px; text-align:left; vertical-align:top; white-space:pre-wrap; }
+    .paper table th{ background:#eef3ea; color:#12332a; font-weight:600; }
+    .paper table td.num, .paper table th.num{ text-align:center; white-space:nowrap; }
+    .paper .genrow th{ width:30%; background:#f4f1e4; }
+    .paper ol, .paper ul{ margin:0 0 8px; padding-left:22px; }
+    .paper li{ margin-bottom:3px; }
+    .paper .total-row td{ font-weight:700; background:#f4f1e4; }
+    @media print{ body{ background:#fff; padding:0; } .paper{ border:none; box-shadow:none; border-radius:0; max-width:none; } }
+    @media (max-width:640px){ .paper{ padding:26px 18px 36px; } }
+  `.trim();
+  const html = '<!DOCTYPE html>\n<html lang="th"><head><meta charset="UTF-8">\n'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    + '<title>' + escapeHtml(title) + '</title>\n'
+    + '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+    + '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
+    + '<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">\n'
+    + '<style>' + css + '</style></head>\n'
+    + '<body><div class="paper">' + bodyHtml + '</div></body></html>';
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  await saveBlob(blob, filename, handle);
+}
+
+/* ============================= EXPORT: DOCX ============================= */
+async function exportDocx(){
+  const filename = (S.general.code||'syllabus')+'_'+(S.general.nameTh||'course').replace(/[^\wก-๙\-]+/g,'_')+'.docx';
+  const saveHandle = await pickSaveHandle(filename);
+  if(saveHandle === 'CANCELLED') return;
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, VerticalAlign, HeadingLevel, AlignmentType, ImageRun } = docx;
+  const CONTENT_W = 9638;
+  const THIN = { style: BorderStyle.SINGLE, size: 2, color: 'A0A0A0' };
+  const BORDERS = { top:THIN, bottom:THIN, left:THIN, right:THIN, insideHorizontal:THIN, insideVertical:THIN };
+
+  const DOCX_ALIGN = { left:AlignmentType.LEFT, center:AlignmentType.CENTER, right:AlignmentType.RIGHT };
+  function withFmt(opts, fmtKey){
+    const f = fmtKey && S.fmt && S.fmt[fmtKey];
+    if(!f) return opts;
+    const o = Object.assign({}, opts);
+    if(f.bold) o.bold = true;
+    if(f.italic) o.italics = true;
+    if(f.underline) o.underline = true;
+    if(f.color) o.color = f.color.replace('#','').toUpperCase();
+    if(f.fontSize) o.size = Math.round(f.fontSize * 2);
+    if(f.fontFamily) o.font = f.fontFamily.split(',')[0].replace(/['"]/g,'').trim();
+    if(f.align) o.align = f.align;
+    return o;
+  }
+  function para(text, opts={}){
+    opts = withFmt(opts, opts.fmtKey);
+    return new Paragraph({
+      spacing:{after: opts.after ?? 60},
+      alignment: opts.align? DOCX_ALIGN[opts.align] : (opts.center? AlignmentType.CENTER : undefined),
+      children:[ new TextRun({ text: text==null?'':String(text), bold: !!opts.bold, italics: !!opts.italics, underline: opts.underline? {} : undefined, size: opts.size || 22, color: opts.color, font: opts.font || 'Bai Jamjuree' }) ]
+    });
+  }
+  function multiPara(text, opts={}){
+    const lines = String(text||'').split('\n');
+    return lines.map(l=> para(l, opts));
+  }
+  function cell(text, opts={}){
+    const m = withFmt(opts, opts.fmtKey);
+    return new TableCell({
+      width: m.width? {size:m.width, type:WidthType.DXA} : undefined,
+      shading: m.header? {fill:'E9EFE9'} : undefined,
+      verticalAlign: VerticalAlign.CENTER,
+      margins:{top:80,bottom:80,left:110,right:110},
+      children: multiPara(text, {bold: !!m.header || !!m.bold, italics:m.italics, underline:m.underline, size: m.size || 21, color:m.color, font:m.font, align:m.align})
+    });
+  }
+  function row(cells, opts={}){ return new TableRow({ children:cells, cantSplit:true, tableHeader: !!opts.header }); }
+  function headerRow(cells){ return row(cells, {header:true}); }
+  function table(rows){ return new Table({ width:{size:CONTENT_W,type:WidthType.DXA}, borders:BORDERS, rows }); }
+  function heading(text, opts={}){
+    const m = withFmt(opts, opts.fmtKey);
+    return new Paragraph({ keepNext:true, keepLines:true, spacing:{before:260, after:100}, border:{bottom:{style:BorderStyle.SINGLE,size:8,color:'B6902F',space:4}}, children:[ new TextRun({text, bold: m.bold!==undefined? m.bold:true, italics:!!m.italics, underline:m.underline? {}:undefined, size: m.size||24, color: m.color||'12332A', font: m.font||'Bai Jamjuree'}) ] });
+  }
+  function equalWidths(total,n){ const base=Math.floor(total/n); const arr=Array(n).fill(base); arr[n-1]=total-base*(n-1); return arr; }
+  function customTableDocx(c){
+    if(!c.table || !c.table.headers.length) return null;
+    const t = c.table;
+    const w = equalWidths(CONTENT_W, t.headers.length);
+    const head = headerRow(t.headers.map((hd,i)=> cell(hd.label, {header:true, width:w[i], fmtKey:fmtKeyCustom(c.id,'colhead:'+hd.id)})));
+    const bodyRows = t.rows.map(r=> row(t.headers.map((hd,i)=> cell(r.cells[hd.id]||'', {width:w[i], fmtKey:fmtKeyCustom(c.id,'cell:'+r.id+':'+hd.id)}))));
+    return table([head, ...bodyRows]);
+  }
+  function customSectionsDocx(anchor, NUM){
+    const out = [];
+    S.customSections.filter(c=>c.anchor===anchor).forEach(c=>{
+      out.push(heading(NUM['custom:'+c.id] + '. ' + (c.title||''), {fmtKey:fmtKeyCustom(c.id,'title')}));
+      if(c.body && c.body.trim()) multiPara(c.body, {fmtKey:fmtKeyCustom(c.id,'body')}).forEach(p=>out.push(p));
+      const tbl = customTableDocx(c);
+      if(tbl) out.push(tbl);
+    });
+    return out;
+  }
+  function secTailDocx(anchor, NUM){
+    const out = [];
+    const note = S.sectionNotes && S.sectionNotes[anchor];
+    if(note && note.trim()){
+      multiPara('หมายเหตุ: '+note, {italics:true, color:'8B8368', size:20, fmtKey:fmtKeyNote(anchor)}).forEach(p=>out.push(p));
+    }
+    out.push(...customSectionsDocx(anchor, NUM));
+    return out;
+  }
+
+  const g = S.general;
+  const children = [];
+
+  const logoKeys = ['uni','faculty'].filter(k=> S.logos && S.logos[k]);
+  if(logoKeys.length){
+    const targetH = 60;
+    const runs = [];
+    for(const key of logoKeys){
+      const dims = await loadImageDims(S.logos[key]);
+      const scale = targetH / dims.h;
+      if(runs.length) runs.push(new TextRun({ text:'    ' }));
+      runs.push(new ImageRun({ data: S.logos[key], transformation:{ width: Math.round(dims.w*scale), height: targetH } }));
+    }
+    children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:{after:200}, children: runs }));
+  }
+
+  children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:{after:260}, children:[ new TextRun({text:'แผนการสอนรายวิชา', bold:true, size:30, color:'12332A', font:'Bai Jamjuree'}) ] }));
+  children.push(para((g.nameTh||'')+(g.nameEn? '  ('+g.nameEn+')':''), {bold:true, size:26, color:'12332A', center:true, after:260, fmtKey:fmtKeyScalar('general.nameTh')}));
+
+  const NUM = computeSectionNumbers();
+  children.push(...customSectionsDocx('start', NUM));
+
+  // 1. general info
+  if(isSecVisible('general')){
+  children.push(heading(NUM.general + '. ' + BUILTIN_SECTION_TITLES.general));
+  const genRows = [
+    ['รหัสรายวิชา', g.code, 'general.code'], ['ชื่อรายวิชา', (g.nameTh||'')+(g.nameEn? '\n'+g.nameEn:''), 'general.nameTh'],
+    ['จำนวนหน่วยกิต', g.credits, 'general.credits'], ['หลักสูตร', g.curriculum, 'general.curriculum'],
+    ['ภาคการศึกษา / ปีการศึกษา', g.semester, 'general.semester'], ['กลุ่มเรียน / หมู่เรียน', g.groups, 'general.groups'],
+    ['วัน เวลาเรียน', g.schedule, 'general.schedule'], ['ห้องเรียน / ช่องทางการเรียนออนไลน์', g.rooms, 'general.rooms'],
+    ['อาจารย์ผู้รับผิดชอบรายวิชา', g.coordinators, 'general.coordinators'], ['อาจารย์ผู้สอน', g.instructors, 'general.instructors'],
+    ['ช่องทางการติดต่ออาจารย์', g.contact, 'general.contact'], ['ช่วงเวลาที่นิสิตขอคำปรึกษา', g.consult, 'general.consult']
+  ];
+  children.push(table(genRows.map(([k,v,path])=> row([cell(k,{header:true,width:2600}), cell(v,{width:CONTENT_W-2600, fmtKey:fmtKeyScalar(path)})]))));
+  }
+  children.push(...secTailDocx('general', NUM));
+
+  // 2 description
+  if(isSecVisible('description')){
+  children.push(heading(NUM.description + '. ' + BUILTIN_SECTION_TITLES.description));
+  multiPara(S.description, {fmtKey:fmtKeyScalar('description')}).forEach(p=>children.push(p));
+  }
+  children.push(...secTailDocx('description', NUM));
+
+  // 3 objectives
+  if(isSecVisible('objectives')){
+  children.push(heading(NUM.objectives + '. ' + BUILTIN_SECTION_TITLES.objectives));
+  S.objectives.forEach((o,i)=>{ if(o.trim()) children.push(para((i+1)+') '+o, {fmtKey:fmtKeyList('objectives',i)})); });
+  }
+  children.push(...secTailDocx('objectives', NUM));
+
+  // 4 CLO
+  if(isSecVisible('clo')){
+  children.push(heading(NUM.clo + '. ' + BUILTIN_SECTION_TITLES.clo));
+  const cloW = equalWidths(CONTENT_W,2); cloW[0]=1400; cloW[1]=CONTENT_W-1400;
+  children.push(table([ headerRow([cell('CLO',{header:true,width:cloW[0]}), cell('ผลลัพธ์การเรียนรู้ของรายวิชา',{header:true,width:cloW[1]})]),
+    ...S.clos.map(c=> row([cell(c.code,{width:cloW[0], fmtKey:fmtKeyArr('clos',c.id,'code')}), cell(c.text,{width:cloW[1], fmtKey:fmtKeyArr('clos',c.id,'text')})])) ]));
+  }
+  children.push(...secTailDocx('clo', NUM));
+
+  // 5 alignment
+  if(isSecVisible('alignment') && S.curricula.length){
+    children.push(heading(NUM.alignment + '. ' + BUILTIN_SECTION_TITLES.alignment));
+    const n = S.curricula.length+1;
+    const w = equalWidths(CONTENT_W, n); w[0]=1500; const rest = equalWidths(CONTENT_W-1500, n-1); rest.forEach((x,i)=>w[i+1]=x);
+    const head = headerRow([cell('CLO',{header:true,width:w[0]}), ...S.curricula.map((cu,i)=>cell(cu.name,{header:true,width:w[i+1]}))]);
+    const bodyRows = S.clos.map(clo=> row([cell(clo.code+' '+clo.text,{width:w[0]}), ...S.curricula.map((cu,i)=>cell(S.alignment[clo.id+'|'+cu.id]||'', {width:w[i+1]}))]));
+    children.push(table([head, ...bodyRows]));
+  }
+  children.push(...secTailDocx('alignment', NUM));
+
+  // 6 methods
+  if(isSecVisible('methods')){
+  children.push(heading(NUM.methods + '. ' + BUILTIN_SECTION_TITLES.methods));
+  const mW=[2600, CONTENT_W-2600];
+  children.push(table([ headerRow([cell('รูปแบบการเรียนรู้',{header:true,width:mW[0]}), cell('รายละเอียด',{header:true,width:mW[1]})]),
+    ...S.teachingMethods.map(m=> row([cell(m.name,{width:mW[0]}), cell(m.detail,{width:mW[1]})])) ]));
+  }
+  children.push(...secTailDocx('methods', NUM));
+
+  // 7 weeks
+  if(isSecVisible('weeks')){
+  children.push(heading(NUM.weeks + '. ' + BUILTIN_SECTION_TITLES.weeks));
+  const wW=[900,2150,1650,1650,1550,1738];
+  children.push(table([ headerRow(['สัปดาห์','หัวข้อการเรียนรู้','ผลลัพธ์การเรียนรู้ (LLO)','กิจกรรมการเรียนรู้ (TLA)','การประเมินผล','อาจารย์ผู้สอน'].map((t,i)=>cell(t,{header:true,width:wW[i]}))),
+    ...S.weeks.map(w=> row([cell((w.no||'')+(w.datetime?'\n'+w.datetime:''),{width:wW[0]}), cell(w.topic,{width:wW[1]}), cell(w.llo,{width:wW[2]}), cell(w.tla,{width:wW[3]}), cell(w.assessment,{width:wW[4]}), cell(w.instructor,{width:wW[5]})])) ]));
+  }
+  children.push(...secTailDocx('weeks', NUM));
+
+  // 8 assessment
+  if(isSecVisible('assessment')){
+  children.push(heading(NUM.assessment + '. ' + BUILTIN_SECTION_TITLES.assessment));
+  const aW=[3600,1200,1600,3238];
+  children.push(table([ headerRow(['รายการประเมิน','คะแนน','CLO ที่ประเมิน','ช่วงเวลาประเมิน'].map((t,i)=>cell(t,{header:true,width:aW[i]}))),
+    ...S.assessmentItems.map(a=> row([cell(a.item,{width:aW[0]}), cell(a.score,{width:aW[1]}), cell(a.clo,{width:aW[2]}), cell(a.timing,{width:aW[3]})])),
+    row([cell('รวม',{header:true,width:aW[0]}), cell(String(totalScore()),{header:true,width:aW[1]}), cell('',{width:aW[2]}), cell('',{width:aW[3]})]) ]));
+  }
+  children.push(...secTailDocx('assessment', NUM));
+
+  // 9 quality levels
+  if(isSecVisible('quality')){
+  children.push(heading(NUM.quality + '. ' + BUILTIN_SECTION_TITLES.quality));
+  const qW=[1800, CONTENT_W-1800];
+  children.push(table([ headerRow([cell('ระดับคุณภาพ',{header:true,width:qW[0]}), cell('ลักษณะผลงานที่คาดหวัง',{header:true,width:qW[1]})]),
+    ...S.qualityLevels.map(q=> row([cell(q.level,{width:qW[0]}), cell(q.desc,{width:qW[1]})])) ]));
+  }
+  children.push(...secTailDocx('quality', NUM));
+
+  // 10 grade cutoffs
+  if(isSecVisible('grades')){
+  children.push(heading(NUM.grades + '. ' + BUILTIN_SECTION_TITLES.grades));
+  const gW=[CONTENT_W/2, CONTENT_W/2];
+  children.push(table([ headerRow([cell('ช่วงคะแนน',{header:true,width:gW[0]}), cell('ระดับคะแนน',{header:true,width:gW[1]})]),
+    ...S.gradeCutoffs.map(gc=> row([cell(gc.range,{width:gW[0]}), cell(gc.grade,{width:gW[1]})])) ]));
+  }
+  children.push(...secTailDocx('grades', NUM));
+
+  // 11 resources
+  if(isSecVisible('resources')){
+  children.push(heading(NUM.resources + '. ' + BUILTIN_SECTION_TITLES.resources));
+  children.push(para('เอกสารหลัก', {bold:true}));
+  S.resources.main.forEach((x,i)=>{ if(x.trim()) children.push(para((i+1)+') '+x)); });
+  children.push(para('เอกสารประกอบการเรียนรู้', {bold:true}));
+  S.resources.supplementary.forEach((x,i)=>{ if(x.trim()) children.push(para((i+1)+') '+x)); });
+  children.push(para('แหล่งเรียนรู้อื่น ๆ', {bold:true}));
+  S.resources.other.forEach((x,i)=>{ if(x.trim()) children.push(para((i+1)+') '+x)); });
+  }
+  children.push(...secTailDocx('resources', NUM));
+
+  // 12 feedback
+  if(isSecVisible('feedback')){
+  children.push(heading(NUM.feedback + '. ' + BUILTIN_SECTION_TITLES.feedback));
+  const fW=[3200, CONTENT_W-3200];
+  children.push(table([ headerRow([cell('รูปแบบการให้ข้อมูลป้อนกลับ',{header:true,width:fW[0]}), cell('ช่วงเวลา / วิธีดำเนินการ',{header:true,width:fW[1]})]),
+    ...S.feedback.map(f=> row([cell(f.method,{width:fW[0]}), cell(f.timing,{width:fW[1]})])) ]));
+  }
+  children.push(...secTailDocx('feedback', NUM));
+
+  // 13 agreements
+  if(isSecVisible('agreements')){
+  children.push(heading(NUM.agreements + '. ' + BUILTIN_SECTION_TITLES.agreements));
+  S.agreements.forEach((a,i)=>{ if(a.trim()) children.push(para((i+1)+') '+a, {fmtKey:fmtKeyList('agreements',i)})); });
+  }
+  children.push(...secTailDocx('agreements', NUM));
+
+  // 14 message
+  if(isSecVisible('message')){
+  children.push(heading(NUM.message + '. ' + BUILTIN_SECTION_TITLES.message));
+  multiPara(S.message, {fmtKey:fmtKeyScalar('message')}).forEach(p=>children.push(p));
+  }
+  children.push(...secTailDocx('message', NUM));
+
+  // appendix
+  children.push(heading('ภาคผนวก: แนวทางการคำนวณผลสัมฤทธิ์ CLO'));
+  const apW=[1200,3600,CONTENT_W-1200-3600];
+  children.push(table([ headerRow(['CLO','แหล่งคะแนนที่ใช้คำนวณ','วิธีคำนวณ'].map((t,i)=>cell(t,{header:true,width:apW[i]}))),
+    ...S.clos.map(c=>{
+      const related = S.assessmentItems.filter(a=> (a.clo||'').split(',').map(s=>s.trim().toLowerCase()).includes((c.code||'').trim().toLowerCase()));
+      const src = related.length? related.map(r=>r.item).join(', ') : '—';
+      return row([cell(c.code,{width:apW[0]}), cell(src,{width:apW[1]}), cell(`คะแนนที่ map กับ ${c.code} ÷ คะแนนเต็มของ ${c.code} × 100`,{width:apW[2]})]);
+    }) ]));
+  children.push(new Paragraph({spacing:{before:160}, children:[]}));
+  children.push(table([ headerRow(['ระดับผลสัมฤทธิ์','ช่วงคะแนน'].map((t,i)=>cell(t,{header:true,width: i===0? CONTENT_W*0.6: CONTENT_W*0.4}))),
+    row([cell('บรรลุระดับสูง',{width:CONTENT_W*0.6}), cell('≥ 80%',{width:CONTENT_W*0.4})]),
+    row([cell('บรรลุระดับปานกลาง',{width:CONTENT_W*0.6}), cell('70–79%',{width:CONTENT_W*0.4})]),
+    row([cell('ควรพัฒนา',{width:CONTENT_W*0.6}), cell('< 70%',{width:CONTENT_W*0.4})]) ]));
+
+  const doc = new Document({
+    sections: [{
+      properties: { page: { size: { width:11906, height:16838 }, margin:{ top:1134, bottom:1134, left:1134, right:1134 } } },
+      children
+    }]
+  });
+
+  const blob = await Packer.toBlob(doc);
+  await saveBlob(blob, filename, saveHandle);
+}
+
+/* ============================= EXPORT: PDF (paginated, no mid-row/mid-heading cuts) ============================= */
+const PDF_PAGE_W = 780;                    // css px, capture width (A4 ratio)
+const PDF_PAGE_H = Math.round(PDF_PAGE_W * (297/210));
+const PDF_PAD = { top:46, right:42, bottom:58, left:42 };
+const PDF_CONTENT_W = PDF_PAGE_W - PDF_PAD.left - PDF_PAD.right;
+const PDF_CONTENT_H = PDF_PAGE_W ? (PDF_PAGE_H - PDF_PAD.top - PDF_PAD.bottom) : 0;
+const PDF_SAFETY = 26; // slack so rounding never causes an actual overflow at render time
+
+async function waitForFonts(){
+  try{ if(document.fonts && document.fonts.ready){ await document.fonts.ready; await document.fonts.load('16px "Bai Jamjuree"'); await document.fonts.load('bold 16px "Bai Jamjuree"'); } }catch(e){}
+}
+
+// Builds real page containers by growing each one row-by-row / item-by-item and checking the
+// browser's own live rendered height after every single addition. Nothing is measured in one
+// place and re-created in another, so there's no separate "predicted" height that can drift
+// from what actually renders — the thing we measure IS the thing that gets captured to PDF.
+async function buildLivePages(){
+  await waitForFonts();
+  const budget = PDF_CONTENT_H - PDF_SAFETY;
+
+  const host = document.createElement('div');
+  host.style.position = 'fixed'; host.style.left = '-9999px'; host.style.top = '0';
+  document.body.appendChild(host);
+
+  function newPageWrap(){
+    const wrap = document.createElement('div');
+    wrap.className = 'paper';
+    wrap.style.width = PDF_CONTENT_W + 'px';
+    wrap.style.padding = '0'; wrap.style.margin = '0';
+    wrap.style.border = 'none'; wrap.style.boxShadow = 'none'; wrap.style.background = '#fff';
+    host.appendChild(wrap);
+    return wrap;
+  }
+
+  const source = document.createElement('div');
+  source.innerHTML = buildPreviewHTML();
+  const blocks = Array.from(source.children);
+
+  const pages = [];
+  let cur = newPageWrap();
+  pages.push(cur);
+  const fits = ()=> cur.getBoundingClientRect().height <= budget;
+  const startNewPage = ()=>{ cur = newPageWrap(); pages.push(cur); };
+
+  for(const block of blocks){
+    const tag = block.tagName.toLowerCase();
+
+    if(tag === 'table'){
+      const rows = Array.from(block.querySelectorAll(':scope > tr, :scope > tbody > tr'));
+      const hasHeader = block.dataset.headerRows === '1' && rows.length > 0;
+      const headerRow = hasHeader ? rows[0] : null;
+      const bodyRows = hasHeader ? rows.slice(1) : rows;
+
+      let tbl = document.createElement('table');
+      if(headerRow) tbl.appendChild(headerRow.cloneNode(true));
+      cur.appendChild(tbl);
+      if(!fits() && cur.children.length > 1){
+        tbl.remove();
+        startNewPage();
+        tbl = document.createElement('table');
+        if(headerRow) tbl.appendChild(headerRow.cloneNode(true));
+        cur.appendChild(tbl);
+      }
+
+      for(const r of bodyRows){
+        const rowClone = r.cloneNode(true);
+        tbl.appendChild(rowClone);
+        if(!fits()){
+          tbl.removeChild(rowClone);
+          if(tbl.querySelectorAll('tr').length === (headerRow?1:0)){
+            // table (with only its header, or nothing) already overflows an otherwise-empty
+            // page — accept this single row rather than looping forever.
+            tbl.appendChild(rowClone);
+          } else {
+            startNewPage();
+            tbl = document.createElement('table');
+            if(headerRow) tbl.appendChild(headerRow.cloneNode(true));
+            cur.appendChild(tbl);
+            tbl.appendChild(rowClone);
+          }
+        }
+      }
+      continue;
+    }
+
+    if(tag === 'ol' || tag === 'ul'){
+      const items = Array.from(block.children);
+      let listEl = document.createElement(tag);
+      cur.appendChild(listEl);
+      let consumed = 0;
+      for(const li of items){
+        const liClone = li.cloneNode(true);
+        listEl.appendChild(liClone);
+        if(!fits()){
+          listEl.removeChild(liClone);
+          if(listEl.children.length === 0){
+            listEl.appendChild(liClone); // lone item already overflows an empty page: accept it
+          } else {
+            startNewPage();
+            listEl = document.createElement(tag);
+            if(tag === 'ol') listEl.setAttribute('start', String(consumed+1));
+            cur.appendChild(listEl);
+            listEl.appendChild(liClone);
+          }
+        }
+        consumed++;
+      }
+      continue;
+    }
+
+    // heading / paragraph
+    const clone = block.cloneNode(true);
+    const isHeading = (tag === 'h3' || tag === 'h4');
+    cur.appendChild(clone);
+    if(!fits() && cur.children.length > 1){
+      clone.remove();
+      startNewPage();
+      cur.appendChild(clone);
+    } else if(isHeading){
+      // keep a heading from being left alone at the very bottom of a page: peek at the
+      // remaining budget and, if there's barely room for anything below it, push it over.
+      const remaining = budget - cur.getBoundingClientRect().height;
+      if(remaining < 40 && cur.children.length > 1){
+        clone.remove();
+        startNewPage();
+        cur.appendChild(clone);
+      }
+    }
+  }
+
+  document.body.removeChild(host);
+  return pages;
+}
+
+async function exportPdf(){
+  const filename = (S.general.code||'syllabus')+'_'+(S.general.nameTh||'course').replace(/[^\wก-๙\-]+/g,'_')+'.pdf';
+  const saveHandle = await pickSaveHandle(filename);
+  if(saveHandle === 'CANCELLED') return;
+  showToast('กำลังจัดหน้าและสร้างไฟล์ PDF ...');
+  const pageWraps = await buildLivePages();
+  const total = pageWraps.length;
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit:'pt', format:'a4' });
+  const pdfW = pdf.internal.pageSize.getWidth();
+  const pdfH = pdf.internal.pageSize.getHeight();
+  const courseLabel = [S.general.code, S.general.nameTh].filter(Boolean).join(' · ');
+
+  for(let i=0; i<pageWraps.length; i++){
+    const pageDiv = document.createElement('div');
+    pageDiv.className = 'paper';
+    pageDiv.style.width = PDF_PAGE_W + 'px';
+    pageDiv.style.height = PDF_PAGE_H + 'px';
+    pageDiv.style.boxSizing = 'border-box';
+    pageDiv.style.boxShadow = 'none';
+    pageDiv.style.border = 'none';
+    pageDiv.style.borderRadius = '0';
+    pageDiv.style.padding = PDF_PAD.top+'px '+PDF_PAD.right+'px '+PDF_PAD.bottom+'px '+PDF_PAD.left+'px';
+    pageDiv.style.background = '#fff';
+    pageDiv.style.position = 'relative';
+
+    const wrap = pageWraps[i];
+    wrap.style.width = '100%'; wrap.style.padding = '0'; wrap.style.margin = '0';
+    wrap.style.border = 'none'; wrap.style.boxShadow = 'none'; wrap.style.borderRadius = '0'; wrap.style.background = 'transparent';
+    pageDiv.appendChild(wrap);
+
+    const footer = document.createElement('div');
+    footer.style.position = 'absolute';
+    footer.style.left = PDF_PAD.left+'px'; footer.style.right = PDF_PAD.right+'px';
+    footer.style.bottom = '18px';
+    footer.style.display = 'flex'; footer.style.justifyContent='space-between';
+    footer.style.fontSize = '10px'; footer.style.color = '#9b9578';
+    footer.style.borderTop = '1px solid #e4ddc9'; footer.style.paddingTop = '6px';
+    footer.innerHTML = `<span>${escapeHtml(courseLabel)}</span><span>หน้า ${i+1} / ${total}</span>`;
+    pageDiv.appendChild(footer);
+
+    const holder = document.createElement('div');
+    holder.style.position = 'fixed'; holder.style.left = '-9999px'; holder.style.top = '0';
+    holder.style.background = '#fff';
+    holder.appendChild(pageDiv);
+    document.body.appendChild(holder);
+    await new Promise(r=>setTimeout(r, 20));
+    const canvas = await html2canvas(pageDiv, { scale:2, backgroundColor:'#ffffff', useCORS:true });
+    document.body.removeChild(holder);
+
+    const imgData = canvas.toDataURL('image/png');
+    if(i>0) pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+  }
+
+  const blob = pdf.output('blob');
+  await saveBlob(blob, filename, saveHandle);
+}
+
+const SAVE_PICKER_TYPES = {
+  '.docx': { description:'Word Document', accept:{'application/vnd.openxmlformats-officedocument.wordprocessingml.document':['.docx']} },
+  '.pdf': { description:'PDF Document', accept:{'application/pdf':['.pdf']} },
+  '.html': { description:'HTML Document', accept:{'text/html':['.html']} },
+  '.json': { description:'JSON File', accept:{'application/json':['.json']} }
+};
+// Must be called immediately (no prior awaits) from inside the button's click handling, so the
+// browser still recognizes it as coming from the person's own click and allows the save dialog.
+async function pickSaveHandle(defaultFilename){
+  if(!window.showSaveFilePicker) return null;
+  const ext = defaultFilename.slice(defaultFilename.lastIndexOf('.'));
+  try{
+    return await window.showSaveFilePicker({
+      suggestedName: defaultFilename,
+      types: SAVE_PICKER_TYPES[ext] ? [SAVE_PICKER_TYPES[ext]] : undefined
+    });
+  }catch(err){
+    if(err && err.name === 'AbortError') return 'CANCELLED';
+    return null; // not supported here, or blocked — fall back to the normal download below
+  }
+}
+
+async function saveBlob(blob, filename, handle){
+  if(handle){
+    try{
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      showToast('บันทึกไฟล์แล้ว: ' + (handle.name || filename));
+      return;
+    }catch(e){ /* fall through to the methods below */ }
+  }
+  try{
+    const downloads = await claude.use('downloads');
+    if(downloads){
+      const buf = await blob.arrayBuffer();
+      await downloads.save({ filename, data: buf });
+      showToast('ดาวน์โหลดไฟล์แล้ว: ' + filename);
+      return;
+    }
+  }catch(e){ /* fall through */ }
+  // fallback: plain browser download (works in preview / some viewers)
+  try{
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
+    showToast('ดาวน์โหลดไฟล์แล้ว: ' + filename);
+  }catch(e2){
+    showToast('ไม่สามารถบันทึกไฟล์ได้ในมุมมองนี้');
+  }
+}
+
+/* ============================= LIBRARY (multi-syllabus storage) ============================= */
+function openLibrary(){
+  const lib = getLibrary();
+  const list = document.getElementById('libList');
+  if(lib.length===0){ list.innerHTML = '<div class="hint">ยังไม่มีไฟล์ที่บันทึกไว้</div>'; }
+  else{
+    list.innerHTML = '';
+    lib.slice().reverse().forEach(entry=>{
+      const row = document.createElement('div'); row.className='libitem';
+      const meta = document.createElement('div'); meta.className='meta';
+      meta.innerHTML = `<b>${escapeHtml(entry.title||'ไม่มีชื่อ')}</b><span>บันทึกเมื่อ ${new Date(entry.savedAt).toLocaleString('th-TH')}</span>`;
+      const openBtn = document.createElement('button'); openBtn.className='tbtn small'; openBtn.textContent='เปิด';
+      openBtn.addEventListener('click', ()=>{ S = normalizeState(JSON.parse(JSON.stringify(entry.data))); buildEditableDocument(); saveCurrent(); closeLibrary(); showToast('เปิดไฟล์แล้ว'); });
+      const delBtn = document.createElement('button'); delBtn.className='iconbtn'; delBtn.textContent='✕';
+      delBtn.addEventListener('click', ()=>{ setLibrary(getLibrary().filter(x=>x.id!==entry.id)); openLibrary(); });
+      row.appendChild(meta); row.appendChild(openBtn); row.appendChild(delBtn);
+      list.appendChild(row);
+    });
+  }
+  document.getElementById('libModal').classList.add('show');
+}
+function closeLibrary(){ document.getElementById('libModal').classList.remove('show'); }
+
+function saveToLibrary(){
+  const title = S.general.nameTh || S.title || 'แผนการสอนรายวิชา';
+  S.title = title;
+  const lib = getLibrary();
+  const idx = lib.findIndex(x=>x.id===S.id);
+  const entry = { id:S.id, title, savedAt: Date.now(), data: JSON.parse(JSON.stringify(S)) };
+  if(idx>=0) lib[idx]=entry; else lib.push(entry);
+  setLibrary(lib);
+  saveCurrent();
+  showToast('บันทึกแล้ว: ' + title);
+}
+
+/* ============================= HELP / ONBOARDING ============================= */
+function openHelp(){ document.getElementById('helpModal').classList.add('show'); }
+function closeHelp(){ document.getElementById('helpModal').classList.remove('show'); try{ localStorage.setItem('syllabus_seen_help_v1','1'); }catch(e){} }
+document.getElementById('btnHelp').addEventListener('click', openHelp);
+document.getElementById('helpClose').addEventListener('click', closeHelp);
+document.getElementById('helpModal').addEventListener('click', (e)=>{ if(e.target.id==='helpModal') closeHelp(); });
+try{ if(!localStorage.getItem('syllabus_seen_help_v1')) openHelp(); }catch(e){}
+
+function noteAutosaved(){
+  const el = document.getElementById('autosaveNote');
+  if(!el) return;
+  const t = new Date();
+  el.textContent = '💾 บันทึกร่างอัตโนมัติไว้ในเบราว์เซอร์นี้แล้ว · ' + t.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+}
+
+/* ============================= EVENTS ============================= */
+document.getElementById('btnSave').addEventListener('click', saveToLibrary);
+document.getElementById('btnNew').addEventListener('click', ()=>{
+  if(confirm('เริ่มแผนการสอนรายวิชาใหม่? ข้อมูลปัจจุบันจะถูกบันทึกไว้ในไฟล์ที่บันทึกไว้ก่อน (ถ้ายังไม่ได้กดบันทึก อาจสูญหาย)')){
+    S = defaultData();
+    // clear sample content to blank starting point except structural defaults
+    S.general = Object.assign(S.general, {code:'',nameTh:'',nameEn:'',credits:'',curriculum:'',semester:'',groups:'',schedule:'',rooms:'',coordinators:'',instructors:'',contact:'',consult:''});
+    S.description=''; S.objectives=['']; S.clos=[{id:uid(),code:'CLO1',text:''}];
+    S.curricula=[{id:uid(),name:'หลักสูตร'}]; S.alignment={};
+    S.teachingMethods=[{id:uid(),name:'',detail:''}];
+    S.weeks=[{id:uid(),no:'1',datetime:'',topic:'',llo:'',tla:'',assessment:'',instructor:''}];
+    S.assessmentItems=[{id:uid(),item:'',score:'',clo:'',timing:''}];
+    S.resources={main:[''],supplementary:[''],other:['']};
+    S.feedback=[{id:uid(),method:'',timing:''}];
+    S.agreements=['']; S.message=''; S.logos={uni:null, faculty:null};
+    S.customSections=[];
+    Object.keys(S.sectionMeta).forEach(k=> S.sectionMeta[k].visible = true);
+    buildEditableDocument(); saveCurrent();
+    showToast('เริ่มไฟล์ใหม่แล้ว');
+  }
+});
+document.getElementById('btnLibrary').addEventListener('click', openLibrary);
+document.getElementById('libClose').addEventListener('click', closeLibrary);
+document.getElementById('libModal').addEventListener('click', (e)=>{ if(e.target.id==='libModal') closeLibrary(); });
+document.getElementById('btnExportJson').addEventListener('click', ()=>{ exportJson().catch(err=>{ console.error(err); showToast('เกิดข้อผิดพลาดในการสร้างไฟล์ .json'); }); });
+document.getElementById('btnImportJson').addEventListener('click', ()=>{ document.getElementById('jsonFileInput').click(); });
+document.getElementById('jsonFileInput').addEventListener('change', async (e)=>{
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  try{
+    const data = await importJsonFile(file);
+    S = normalizeState(data);
+    buildEditableDocument();
+    saveCurrent();
+    showToast('นำเข้าไฟล์ .json สำเร็จ');
+  }catch(err){
+    console.error(err);
+    showToast('ไฟล์ .json ไม่ถูกต้องหรืออ่านไม่ได้');
+  }
+});
+document.getElementById('btnHtml').addEventListener('click', ()=>{ exportHtml().catch(err=>{ console.error(err); showToast('เกิดข้อผิดพลาดในการสร้างไฟล์ HTML'); }); });
+document.getElementById('btnDocx').addEventListener('click', ()=>{ exportDocx().catch(err=>{ console.error(err); showToast('เกิดข้อผิดพลาดในการสร้างไฟล์ Word'); }); });
+document.getElementById('btnPdf').addEventListener('click', ()=>{ exportPdf().catch(err=>{ console.error(err); showToast('เกิดข้อผิดพลาดในการสร้างไฟล์ PDF'); }); });
+
+document.getElementById('logoFileInput').addEventListener('change', async (e)=>{
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  const target = pendingLogoTarget;
+  pendingLogoTarget = null;
+  if(!file || !target) return;
+  try{
+    showToast('กำลังอัปโหลดโลโก้ ...');
+    const dataUrl = await fileToResizedDataUrl(file, 300);
+    if(!S.logos) S.logos = { uni:null, faculty:null };
+    S.logos[target] = dataUrl;
+    saveCurrent();
+    buildEditableDocument();
+    showToast('เพิ่มโลโก้แล้ว');
+  }catch(err){
+    console.error(err);
+    showToast('อัปโหลดโลโก้ไม่สำเร็จ ลองใหม่อีกครั้ง');
+  }
+});
+
+/* ============================= FIXED HEADER OFFSET ============================= */
+function syncHeaderOffset(){
+  const head = document.querySelector('.sticky-head');
+  if(!head) return;
+  document.body.style.paddingTop = head.getBoundingClientRect().height + 'px';
+}
+(function(){
+  const head = document.querySelector('.sticky-head');
+  if(head && window.ResizeObserver){
+    new ResizeObserver(syncHeaderOffset).observe(head);
+  } else {
+    window.addEventListener('resize', syncHeaderOffset);
+  }
+})();
+try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(syncHeaderOffset); }catch(e){}
+
+document.getElementById('hiddenStrip').addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-action="show-sec"]');
+  if(!btn) return;
+  if(!S.sectionMeta[btn.dataset.sec]) S.sectionMeta[btn.dataset.sec] = {};
+  S.sectionMeta[btn.dataset.sec].visible = true;
+  saveCurrent();
+  buildEditableDocument();
+});
+
+/* ============================= COLUMN RESIZE (drag) ============================= */
+let colResizeState = null;
+document.addEventListener('mousedown', (e)=>{
+  const handle = e.target.closest('.col-resize');
+  if(!handle) return;
+  e.preventDefault();
+  const table = handle.closest('table');
+  const colgroup = table && table.querySelector('colgroup');
+  if(!colgroup) return;
+  const cols = Array.from(colgroup.children);
+  const widths = cols.map(c=> parseFloat(c.style.width) || 0);
+  colResizeState = {
+    tableKey: handle.dataset.table,
+    colIdx: parseInt(handle.dataset.col, 10),
+    ctlBefore: handle.dataset.ctlBefore === '1',
+    ctlAfter: handle.dataset.ctlAfter === '1',
+    startX: e.clientX,
+    tableWidth: table.getBoundingClientRect().width,
+    widths, cols
+  };
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+});
+document.addEventListener('mousemove', (e)=>{
+  if(!colResizeState) return;
+  const st = colResizeState;
+  const dxPct = (e.clientX - st.startX) / st.tableWidth * 100;
+  const i = st.colIdx;
+  const MIN = 6;
+  let w1 = st.widths[i] + dxPct;
+  let w2 = st.widths[i+1] - dxPct;
+  if(w1 < MIN){ w2 -= (MIN - w1); w1 = MIN; }
+  if(w2 < MIN){ w1 -= (MIN - w2); w2 = MIN; }
+  st.cols[i].style.width = w1 + '%';
+  st.cols[i+1].style.width = w2 + '%';
+});
+document.addEventListener('mouseup', ()=>{
+  if(!colResizeState) return;
+  const { tableKey, cols, ctlBefore, ctlAfter } = colResizeState;
+  let dataCols = cols;
+  if(ctlBefore) dataCols = dataCols.slice(1);
+  if(ctlAfter) dataCols = dataCols.slice(0, -1);
+  const dataWidths = dataCols.map(c=> parseFloat(c.style.width));
+  if(!S.colWidths) S.colWidths = {};
+  S.colWidths[tableKey] = dataWidths;
+  saveCurrent();
+  colResizeState = null;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+});
+
+/* ============================= BOOT ============================= */
+buildEditableDocument();
+applyZoom();
+saveCurrent();
+syncHeaderOffset();
+</script>
+</body>
+</html>
